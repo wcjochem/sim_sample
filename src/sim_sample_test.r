@@ -21,11 +21,13 @@ library(gstat)
 library(ggplot2)
 library(rasterVis)
 library(gridExtra)
+library(splitstackshape)
 
 # simulation parameters
 nsims <- 10 # number of spatial fields to repeat
 regionsize <- 50 # dim of square region
 phi <- 0.05 # smoothness parameter
+ndraws <- 100 # number of repeated samples
 
 # abundance mdoel parameters
 beta0 <- .4 # intercept
@@ -111,3 +113,89 @@ count_plots <- lapply(1:nsims, function(x){
   # count_plots
 # arrange all plots
 marrangeGrob(count_plots, nrow=5, ncol=2)
+
+
+## implement sampling strategies
+# different sample sizes
+sampsz <- c(25,50,100,150,200,250,300,400,500) # CHANGE HERE
+
+# preallocate storage for the output
+pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
+                               rep(sampsz, each=ndraws),
+                               NA, NA), # create multiple cols for error metrics
+                    nrow=nsims*length(sampsz)*ndraws, ncol=4)
+# Loop and evaluate all
+r <- 1 # counter to fill in the output
+for(i in 1:nsims){ # loop over different simulated populations
+  print(i)
+  
+  count <- countfields[[i]] # simulated pop
+  # total "true" population
+  totpop <- sum(values(count))
+  
+  # create binary 'settled' area
+  settle <- count # copy raster
+  settle[settle>0] <- 1
+  # total number of settled cells (need later for proportional allocation)
+  totsettle <- sum(values(settle))
+  # create a domain to select sampling locations
+  # sampling from within settlement (assumes perfect residential classification)
+  # extract records to a data.frame (ok for small simulations)
+  domain <- as.data.frame(settle, xy=TRUE)
+  domain <- domain[domain$counts>0,]
+  # extract observed (simulated) population values for all locations
+  domain$counts <- extract(count, domain[,c("x","y")])
+  # "true" average population per pixel
+  mean(domain$counts)
+  
+  ## stratify the settled area - multiple methods
+  # make 5 horizontal strata (naive stratification for comparison)
+  # see: https://gis.stackexchange.com/questions/34895/create-zonal-grid-in-r
+  rows <- 10; cols <- 50; n <- 50
+  strat <- outer(1:n, 1:n, 
+                 function(i,j) (i-1) %/% rows * ((n+1) %/% cols) + (j-1) %/% cols + 1)
+  strat <- raster(strat, xmn=0, xmx=50, ymn=0, ymx=50)
+  nstrat <- length(unique(values(strat)))
+    # plot(count); plot(strat, add=T, alpha=.5) # example
+  # create strata ID for sampling domain
+  domain$simp_strat <- as.character(extract(strat, domain[,c("x","y")]))
+  
+  for(sz in sampsz){ # vary total sample size
+    print(sz)
+  # repeated sample realisations
+    for(d in 1:ndraws){ 
+      # set.seed(d) # ?
+    # sampling methods:
+    ## simple random sample ##
+      srs <- sample(1:nrow(domain), size=sz, replace=F)
+      # extract values of sampled points
+      srs <- domain[srs,]
+      # sample mean pop per pixel
+      samp_mean <- mean(srs$counts)
+      
+    ## stratified random sample - equal weight ##
+      # equal sample size per stratum
+      szs <- round(sz / nstrat)
+      # draw sample
+      strs <- data.frame(stratified(domain, "simp_strat", szs))
+      # TO-DO: calculate stratified mean values of [counts]
+      
+   ## stratified random sample - prop to settled area ##
+      wgt <- zonal(settle, strat, sum)
+      wgt <- wgt[,'value'] / totsettle
+      # sample sizes - note rounding may causes some different totals
+      szs <- setNames(round(wgt*sz), unique(values(strat)))
+      # draw sample
+      strs <- data.frame(stratified(domain, "simp_strat", szs))
+
+      # TO-DO: calculate stratified mean values
+      
+      # TO-DO: calculate and store the comparison of population
+      # pred_errs[r,3] <- ERROR calculation
+      # pred_errs[r, 4] <- ERROR calculation
+      r <- r+1
+    }
+  }
+}
+
+# process results
