@@ -18,6 +18,9 @@
 
 library(raster)
 library(gstat)
+library(ggplot2)
+library(rasterVis)
+library(gridExtra)
 
 # simulation parameters
 nsims <- 10 # number of spatial fields to repeat
@@ -96,5 +99,15 @@ for(i in 1:nsims){
 # can save/output the list of simulated fields for replication study
 
 # visualise the results
-plot(counts[[1]]) # first example
-
+plot(countfields[[1]]) # first example
+# create list of all counts
+count_plots <- lapply(1:nsims, function(x){
+  gplot(countfields[[x]]) +
+    geom_tile(aes(fill= value)) + 
+    scale_fill_gradient(low="white", high="red") + 
+    theme_bw() +
+    coord_equal()
+})
+  # count_plots
+# arrange all plots
+marrangeGrob(count_plots, nrow=5, ncol=2)
