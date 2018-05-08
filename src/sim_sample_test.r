@@ -147,6 +147,40 @@ for(i in 1:nsims){ # loop over different simulated populations
   domain$counts <- extract(count, domain[,c("x","y")])
   # "true" average population per pixel
     mean(domain$counts)
+    
+  # create a high pop sub-domain area to estimate totals
+  # analogous to having a capital city within a regional sampling domain
+  hicell <- cellFromXY(count, domain[which.max(domain$counts),c("x","y")])
+  row <- rowFromCell(count, hicell) # get row/column of the high population area
+  col <- colFromCell(count, hicell)
+
+  csz <- 4 # set sub-area size (square: csz+1 x csz+1 cells)
+  stopifnot(regionsize >= 2*csz + 1) # double-check no small regions
+  rcols <- lcols <- trows <- brows <- csz # default square sub-region
+  # logic checks to prevent subdomain extending beyond border
+  if(col+csz > regionsize){
+    rcols <- regionsize - col
+    lcols <- lcols + (csz - rcols)
+  }
+  if(col-csz <= 0){
+    lcols <- col - 1
+    rcols <- csz + (csz-lcols)
+  }
+  # repeat checks for rows
+  if(row+csz > regionsize){
+    brows <- regionsize - row
+    trows <- csz + (csz - brows)
+  }
+  if(row-csz <= 0){
+    trows <- row - 1
+    brows <- csz + (csz - trows)
+  }
+  # create sub-region extent
+  subreg <- extent(count, row-trows, row+brows, col-lcols, col+rcols)
+    plot(count); points(domain[which.max(domain$counts),c("x","y")]); plot(subreg, add=T) # example plot
+  # extract subregion to new population grid
+  subpop <- crop(count, subreg)
+    # sum(values(subpop)) # quick count of total pop
   
   ## stratify the settled area - multiple methods
   # make 5 horizontal strata (naive stratification for comparison)
@@ -203,9 +237,10 @@ for(i in 1:nsims){ # loop over different simulated populations
       # sample mean pop per pixel
       
       
-      # TO-DO: calculate and store the comparison of population
-      # pred_errs[r,3] <- ERROR calculation
-      # pred_errs[r, 4] <- ERROR calculation
+      # TO-DO: calculate and store the comparison of total population
+      # TO-DO: compare prediction for sub-region population
+      # pred_errs[r,3] <- ERROR calculation storage
+      # pred_errs[r, 4] <- ERROR calculation storage
       r <- r+1
     }
   }
