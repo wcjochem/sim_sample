@@ -146,7 +146,7 @@ for(i in 1:nsims){ # loop over different simulated populations
   # extract observed (simulated) population values for all locations
   domain$counts <- extract(count, domain[,c("x","y")])
   # "true" average population per pixel
-  mean(domain$counts)
+    mean(domain$counts)
   
   ## stratify the settled area - multiple methods
   # make 5 horizontal strata (naive stratification for comparison)
@@ -159,6 +159,13 @@ for(i in 1:nsims){ # loop over different simulated populations
     # plot(count); plot(strat, add=T, alpha=.5) # example
   # create strata ID for sampling domain
   domain$simp_strat <- as.character(extract(strat, domain[,c("x","y")]))
+  
+  # population-based strata
+  # create weights from the aggregated, average pop counts
+  count_agg5 <- aggregate(count, fact=5, fun=mean)
+    # plot(count_agg5)
+  # extract values to the sample domain
+  domain$pop_wgt <- extract(count_agg5, domain[,c("x","y")])
   
   for(sz in sampsz){ # vary total sample size
     print(sz)
@@ -187,8 +194,14 @@ for(i in 1:nsims){ # loop over different simulated populations
       szs <- setNames(round(wgt*sz), unique(values(strat)))
       # draw sample
       strs <- data.frame(stratified(domain, "simp_strat", szs))
-
       # TO-DO: calculate stratified mean values
+      
+   ## sample weighted by approximate population density
+      srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
+      # extract values from sampled points
+      srs_pwgt <- domain[srs_pwgt,]
+      # sample mean pop per pixel
+      
       
       # TO-DO: calculate and store the comparison of population
       # pred_errs[r,3] <- ERROR calculation
