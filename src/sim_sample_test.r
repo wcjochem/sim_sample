@@ -117,7 +117,7 @@ marrangeGrob(count_plots, nrow=5, ncol=2)
 
 ## implement sampling strategies
 # different sample sizes
-sampsz <- c(25,50,100,150,200,250,300,400,500) # CHANGE HERE
+sampsz <- c(25,50,75,100,125,150,200,250,300,400,500) # CHANGE HERE
 
 # preallocate storage for the output
 pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
