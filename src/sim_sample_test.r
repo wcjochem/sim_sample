@@ -122,8 +122,8 @@ sampsz <- c(25,50,75,100,125,150,200,250,300,400,500) # CHANGE HERE
 # preallocate storage for the output
 pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
                                rep(sampsz, each=ndraws),
-                               NA, NA), # create multiple cols for error metrics
-                    nrow=nsims*length(sampsz)*ndraws, ncol=4)
+                               NA, NA, NA, NA, NA), # create multiple cols for error metrics
+                    nrow=nsims*length(sampsz)*ndraws, ncol=7)
 # Loop and evaluate all
 r <- 1 # counter to fill in the output
 for(i in 1:nsims){ # loop over different simulated populations
@@ -203,6 +203,9 @@ for(i in 1:nsims){ # loop over different simulated populations
   
   for(sz in sampsz){ # vary total sample size
     print(sz)
+  # store sample size as proportion of settled area
+    pred_errs[r, 3] <- sz / totsettle
+    
   # repeated sample realisations
     for(d in 1:ndraws){ 
       # set.seed(d) # ?
@@ -213,6 +216,8 @@ for(i in 1:nsims){ # loop over different simulated populations
       srs <- domain[srs,]
       # sample mean pop per pixel
       samp_mean <- mean(srs$counts)
+      # apply mean to settled area
+      domain$pr_srs <- samp_mean
       
     ## stratified random sample - equal weight ##
       # equal sample size per stratum
