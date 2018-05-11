@@ -22,6 +22,8 @@ library(ggplot2)
 library(rasterVis)
 library(gridExtra)
 library(splitstackshape)
+library(Metrics)
+
 
 # simulation parameters
 nsims <- 10 # number of spatial fields to repeat
@@ -121,9 +123,9 @@ sampsz <- c(25,50,75,100,125,150,200,250,300,400,500) # CHANGE HERE
 
 # preallocate storage for the output
 pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
-                               rep(sampsz, each=ndraws),
-                               NA, NA, NA, NA, NA), # create multiple cols for error metrics
-                    nrow=nsims*length(sampsz)*ndraws, ncol=7)
+                               rep(sampsz, each=ndraws), 
+                               array(NA,c(nsims*length(sampsz)*ndraws, 7))), # create multiple cols for error metrics
+                    nrow=nsims*length(sampsz)*ndraws, ncol=9)
 # Loop and evaluate all
 r <- 1 # counter to fill in the output
 for(i in 1:nsims){ # loop over different simulated populations
@@ -250,16 +252,23 @@ for(i in 1:nsims){ # loop over different simulated populations
       domain$pr_areawt <- strs_mean[domain$simp_strat, "mean"]
       
    ## sample weighted by approximate population density -- test preferential sampling corrections
-      srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
+      # srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
       # extract values from sampled points
-      srs_pwgt <- domain[srs_pwgt,]
+      # srs_pwgt <- domain[srs_pwgt,]
       # sample mean pop per pixel
       
+      # per-pixel error metrics
+      pred_errs[r, 4] <- mape(domain$counts, domain$pr_srs)
+      pred_errs[r, 5] <- rmse(domain$counts, domain$pr_srs)
       
+      pred_errs[r, 6] <- mape(domain$counts, domain$pr_strs)
+      pred_errs[r, 7] <- rmse(domain$counts, domain$pr_strs)
+      
+      pred_errs[r, 8] <- mape(domain$counts, domain$pr_areawt)
+      pred_errs[r, 9] <- rmse(domain$counts, domain$pr_areawt)
       # TO-DO: calculate and store the comparison of total population
       # TO-DO: compare prediction for sub-region population
-      # pred_errs[r,3] <- ERROR calculation storage
-      # pred_errs[r, 4] <- ERROR calculation storage
+
       r <- r+1
     }
   }
