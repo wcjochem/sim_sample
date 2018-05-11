@@ -142,6 +142,9 @@ for(i in 1:nsims){ # loop over different simulated populations
   # sampling from within settlement (assumes perfect residential classification)
   # extract records to a data.frame (ok for small simulations)
   domain <- as.data.frame(settle, xy=TRUE)
+  # get cell numbers for linking to other sub-regions
+  domain$cnum <- cellFromXY(settle, domain[,c("x","y")])
+  # keep only settled areas b/c conversion takes all cells
   domain <- domain[domain$counts>0,]
   # extract observed (simulated) population values for all locations
   domain$counts <- extract(count, domain[,c("x","y")])
@@ -178,8 +181,12 @@ for(i in 1:nsims){ # loop over different simulated populations
   # create sub-region extent
   subreg <- extent(count, row-trows, row+brows, col-lcols, col+rcols)
     plot(count); points(domain[which.max(domain$counts),c("x","y")]); plot(subreg, add=T) # example plot
-  # extract subregion to new population grid
-  subpop <- crop(count, subreg)
+  # identify sub-region within the domain
+  subcells <- cellsFromExtent(count, subreg) # find the cell numbers (matches domain and settle and count)
+  domain[domain$cnum %in% subcells, "subdomain"] <- 1 # cell is within the extent of sub-region
+  domain[is.na(domain$subdomain), "subdomain"] <- 0 # reclass NA for quick subsetting
+  # total "true" population in sub-region
+  subpop <- sum(domain[domain$subdomain==1, "counts"])
     # sum(values(subpop)) # quick count of total pop
   
   ## stratify the settled area - multiple methods
