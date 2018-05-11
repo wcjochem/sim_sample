@@ -187,7 +187,6 @@ for(i in 1:nsims){ # loop over different simulated populations
   domain[is.na(domain$subdomain), "subdomain"] <- 0 # reclass NA for quick subsetting
   # total "true" population in sub-region
   subpop <- sum(domain[domain$subdomain==1, "counts"])
-    # sum(values(subpop)) # quick count of total pop
   
   ## stratify the settled area - multiple methods
   # make 5 horizontal strata (naive stratification for comparison)
@@ -221,9 +220,10 @@ for(i in 1:nsims){ # loop over different simulated populations
       srs <- sample(1:nrow(domain), size=sz, replace=F)
       # extract values of sampled points
       srs <- domain[srs,]
+        # plot(count); points(srs[,c("x","y")]) # sample locns
       # sample mean pop per pixel
       samp_mean <- mean(srs$counts)
-      # apply mean to settled area
+      # apply mean to settled area domain
       domain$pr_srs <- samp_mean
       
     ## stratified random sample - equal weight ##
@@ -231,7 +231,11 @@ for(i in 1:nsims){ # loop over different simulated populations
       szs <- round(sz / nstrat)
       # draw sample
       strs <- data.frame(stratified(domain, "simp_strat", szs))
-      # TO-DO: calculate stratified mean values of [counts]
+        # plot(count); points(strs[,c("x","y")])
+      # mean values of counts per stratum
+      strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
+      # apply mean to settled area domain by stratum
+      domain$pr_strs <- strs_mean[domain$simp_strat, "mean"] # expand by domain
       
    ## stratified random sample - prop to settled area ##
       wgt <- zonal(settle, strat, sum)
@@ -240,9 +244,12 @@ for(i in 1:nsims){ # loop over different simulated populations
       szs <- setNames(round(wgt*sz), unique(values(strat)))
       # draw sample
       strs <- data.frame(stratified(domain, "simp_strat", szs))
-      # TO-DO: calculate stratified mean values
+      # mean values of counts per stratum
+      strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
+      # apply mean to settled area domain by stratum
+      domain$pr_areawt <- strs_mean[domain$simp_strat, "mean"]
       
-   ## sample weighted by approximate population density
+   ## sample weighted by approximate population density -- test preferential sampling corrections
       srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
       # extract values from sampled points
       srs_pwgt <- domain[srs_pwgt,]
