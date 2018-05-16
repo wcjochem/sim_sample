@@ -126,7 +126,13 @@ pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
                                rep(sampsz, each=ndraws), 
                                array(NA,c(nsims*length(sampsz)*ndraws, 7))), # create multiple cols for error metrics
                     nrow=nsims*length(sampsz)*ndraws, ncol=9)
-# Loop and evaluate all
+# storage for total/sub population comparison
+pred_pop <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
+                              rep(sampsz, each=ndraws),
+                              array(NA,c(nsims*length(sampsz)*ndraws, 3))),
+                   nrow=nsims*length(sampsz)*ndraws, ncol=5)
+
+# Loop and evaluate 
 r <- 1 # counter to fill in the output
 for(i in 1:nsims){ # loop over different simulated populations
   print(i)
@@ -211,11 +217,11 @@ for(i in 1:nsims){ # loop over different simulated populations
   
   for(sz in sampsz){ # vary total sample size
     print(sz)
-  # store sample size as proportion of settled area
-    pred_errs[r, 3] <- sz / totsettle
-    
+
   # repeated sample realisations
     for(d in 1:ndraws){ 
+      # store sample size as proportion of settled area
+      pred_errs[r, 3] <- sz / totsettle
       # set.seed(d) # ?
     # sampling methods:
     ## simple random sample ##
