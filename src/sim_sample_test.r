@@ -129,8 +129,8 @@ pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
 # storage for total/sub population comparison
 pred_pop <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
                               rep(sampsz, each=ndraws),
-                              array(NA,c(nsims*length(sampsz)*ndraws, 3))),
-                   nrow=nsims*length(sampsz)*ndraws, ncol=5)
+                              array(NA,c(nsims*length(sampsz)*ndraws, 8))),
+                   nrow=nsims*length(sampsz)*ndraws, ncol=10)
 
 # Loop and evaluate 
 r <- 1 # counter to fill in the output
@@ -222,6 +222,9 @@ for(i in 1:nsims){ # loop over different simulated populations
     for(d in 1:ndraws){ 
       # store sample size as proportion of settled area
       pred_errs[r, 3] <- sz / totsettle
+      # store "true" populations
+      pred_pop[r, 3] <- totpop
+      pred_pop[r, 4] <- subpop
       # set.seed(d) # ?
     # sampling methods:
     ## simple random sample ##
@@ -272,8 +275,16 @@ for(i in 1:nsims){ # loop over different simulated populations
       
       pred_errs[r, 8] <- mape(domain$counts, domain$pr_areawt)
       pred_errs[r, 9] <- rmse(domain$counts, domain$pr_areawt)
-      # TO-DO: calculate and store the comparison of total population
-      # TO-DO: compare prediction for sub-region population
+      
+      # calculate and store the total and subdomain populations
+      pred_pop[r, 5] <- sum(domain$pr_srs)
+      pred_pop[r, 6] <- sum(domain[domain$subdomain==1, "pr_srs"])
+      
+      pred_pop[r, 7] <- sum(domain$pr_strs)
+      pred_pop[r, 8] <- sum(domain[domain$subdomain==1, "pr_strs"])
+      
+      pred_pop[r, 9] <- sum(domain$pr_areawt)
+      pred_pop[r, 10] <- sum(domain[domain$subdomain==1, "pr_areawt"])
 
       r <- r+1
     }
