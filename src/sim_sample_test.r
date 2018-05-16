@@ -292,3 +292,18 @@ for(i in 1:nsims){ # loop over different simulated populations
 }
 
 # process results
+pop.df <- data.frame(pred_pop)
+names(pop.df) <- c("sim","sz","totpop","subpop","pr_srs","pr_srs_d","pr_strs","pr_strs_d","pr_areawt","pr_areawt_d")
+# convert to long
+pop.df.l <- reshape(pop.df,
+                    varying=c("pr_srs","pr_srs_d","pr_strs","pr_strs_d","pr_areawt","pr_areawt_d"),
+                    v.names="pop",
+                    timevar="est",
+                    times=c("pr_srs","pr_srs_d","pr_strs","pr_strs_d","pr_areawt","pr_areawt_d"),
+                    direction="long")
+
+ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
+  geom_boxplot() + 
+  facet_wrap(~sim, scales="free") 
+
+ggplot(domain, aes(x=cnum, y=counts)) + geom_line() + geom_smooth(method="loess", se=F, span=.09)
