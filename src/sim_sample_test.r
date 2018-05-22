@@ -132,6 +132,9 @@ pred_pop <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
                               array(NA,c(nsims*length(sampsz)*ndraws, 8))),
                    nrow=nsims*length(sampsz)*ndraws, ncol=10)
 
+# storage to record sample locations from SRS
+srs_locn <- vector("list", length=nsims)
+
 # Loop and evaluate 
 r <- 1 # counter to fill in the output
 for(i in 1:nsims){ # loop over different simulated populations
@@ -158,6 +161,9 @@ for(i in 1:nsims){ # loop over different simulated populations
   domain$counts <- extract(count, domain[,c("x","y")])
   # "true" average population per pixel
     mean(domain$counts)
+    
+  # store the domain for sample counts
+  srs_locn[[i]] <- domain
     
   # create a high pop sub-domain area to estimate totals
   # analogous to having a capital city within a regional sampling domain
@@ -217,6 +223,8 @@ for(i in 1:nsims){ # loop over different simulated populations
   
   for(sz in sampsz){ # vary total sample size
     print(sz)
+    # add column for each sample size
+    srs_locn[[i]][[paste0("sz_",sz)]] <- 0
 
   # repeated sample realisations
     for(d in 1:ndraws){ 
@@ -232,6 +240,9 @@ for(i in 1:nsims){ # loop over different simulated populations
       # extract values of sampled points
       srs <- domain[srs,]
         # plot(count); points(srs[,c("x","y")]) # sample locns
+      # store iterative count of selected locns
+      srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] <- 
+        srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] + 1
       # sample mean pop per pixel
       samp_mean <- mean(srs$counts)
       # apply mean to settled area domain
@@ -291,6 +302,7 @@ for(i in 1:nsims){ # loop over different simulated populations
   }
 }
 
+#####
 # process results
 pop.df <- data.frame(pred_pop)
 names(pop.df) <- c("sim","sz","totpop","subpop","pr_srs","pr_srs_d","pr_strs","pr_strs_d","pr_areawt","pr_areawt_d")
@@ -304,6 +316,24 @@ pop.df.l <- reshape(pop.df,
 
 ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
   geom_boxplot() + 
-  facet_wrap(~sim, scales="free") 
+  facet_wrap(~sim, scales="free", ncol=2) 
 
 ggplot(domain, aes(x=cnum, y=counts)) + geom_line() + geom_smooth(method="loess", se=F, span=.09)
+
+# compare sample selection locations
+df <- srs_locn[[2]]
+
+ggplot(data=df, aes(x=cnum, y=counts)) + 
+  geom_line(colour="grey") + 
+  geom_smooth(method="loess", se=F, span=0.09) + 
+  geom_hline(aes(yintercept=mean(counts), col="red"), show.legend=F) +
+  geom_rug(aes(x=cnum, alpha=sz_50), sides="b") +
+  # geom_smooth(aes(x=cnum, y=sz_50*100), method="loess", span=0.05) +
+  theme_bw()
+
+ggplot(data=df, aes(x=cnum, y=sz_50)) + 
+  geom_line(colour="grey") + 
+  geom_smooth(method="loess", se=F, span=0.05) + 
+  # geom_hline(aes(yintercept=mean(counts), col="red"), show.legend=F) +
+  # geom_rug(aes(x=cnum, alpha=sz_25)) +
+  theme_bw()
