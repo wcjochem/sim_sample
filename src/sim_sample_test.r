@@ -304,24 +304,72 @@ for(i in 1:nsims){ # loop over different simulated populations
 
 #####
 # process results
-pop.df <- data.frame(pred_pop)
-names(pop.df) <- c("sim","sz","totpop","subpop","pr_srs","pr_srs_d","pr_strs","pr_strs_d","pr_areawt","pr_areawt_d")
-# convert to long
-pop.df.l <- reshape(pop.df,
-                    varying=c("pr_srs","pr_srs_d","pr_strs","pr_strs_d","pr_areawt","pr_areawt_d"),
-                    v.names="pop",
+# convert errors to datafraem for ggplot
+err.df <- data.frame(pred_errs)
+names(err.df) <- c("sim","sz","pct_samp","mape_srs","rmse_srs","mape_strs","rmse_strs","mape_areawt","rmse_areawt")
+# split
+err.df.mape <- err.df[,c("sim","sz","pct_samp","mape_srs","mape_strs","mape_areawt")]
+err.df.rmse <- err.df[,c("sim","sz","pct_samp","rmse_srs","rmse_strs","rmse_areawt")]
+# convert to long format
+err.rmse.l <- reshape(err.df.rmse,
+                    varying=c("rmse_srs","rmse_strs","rmse_areawt"),
+                    v.names="err",
                     timevar="est",
-                    times=c("pr_srs","pr_srs_d","pr_strs","pr_strs_d","pr_areawt","pr_areawt_d"),
+                    times=c("rmse_srs","rmse_strs","rmse_areawt"),
                     direction="long")
 
-ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
-  geom_boxplot() + 
-  facet_wrap(~sim, scales="free", ncol=2) 
+err.mape.l <- reshape(err.df.mape,
+                    varying=c("mape_srs","mape_strs","mape_areawt"),
+                    v.names="err",
+                    timevar="est",
+                    times=c("mape_srs","mape_strs","mape_areawt"),
+                    direction="long")
 
-ggplot(domain, aes(x=cnum, y=counts)) + geom_line() + geom_smooth(method="loess", se=F, span=.09)
+# plot EA-level error metrics
+ggplot(data=err.rmse.l, aes(x=as.factor(sz), y=err, fill=est)) +
+  geom_boxplot() +
+  facet_wrap(~sim, scales="free", ncol=2) +
+  theme_bw()
+
+ggplot(data=err.mape.l, aes(x=as.factor(sz), y=err, fill=est)) +
+  geom_boxplot() +
+  facet_wrap(~sim, scales="free", ncol=2) +
+  theme_bw()
+
+
+
+# convert population to dataframe for ggplot
+pop.df <- data.frame(pred_pop)
+names(pop.df) <- c("sim","sz","totpop","subpop","pr_srs","pr_srs_d","pr_strs","pr_strs_d","pr_areawt","pr_areawt_d")
+# subdomain data frame
+subpop.df <- pop.df[,c("sim","sz","totpop","subpop","pr_srs_d","pr_strs_d","pr_areawt_d")]
+pop.df <- pop.df[,!names(pop.df) %in% c("pr_srs_d","pr_strs_d","pr_areawt_d")]
+
+
+# pop records convert to long format
+pop.df.l <- reshape(pop.df,
+                    varying=c("pr_srs","pr_strs","pr_areawt"),
+                    v.names="pop",
+                    timevar="est",
+                    times=c("pr_srs","pr_strs","pr_areawt"),
+                    direction="long")
+# find simulation-specific total population
+totpop <- unique(pop.df[,c("sim","totpop")])
+# plot total popuation predictions
+ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
+  geom_boxplot() +
+  facet_wrap(~sim, scales="free", ncol=2) +
+  geom_hline(data=totpop, aes(yintercept=totpop, col="red"), show.legend=F) +
+  theme_bw()
+
+# plot 1D representation of population
+ggplot(domain, aes(x=cnum, y=counts)) + 
+  geom_line() + 
+  geom_smooth(method="loess", se=F, span=.09) +
+  theme_bw()
 
 # compare sample selection locations
-df <- srs_locn[[2]]
+df <- srs_locn[[9]] # example
 
 ggplot(data=df, aes(x=cnum, y=counts)) + 
   geom_line(colour="grey") + 
