@@ -103,7 +103,7 @@ for(i in 1:nsims){
 # can save/output the list of simulated fields for replication study
 
 # visualise the results
-plot(countfields[[1]]) # first example
+#   plot(countfields[[1]]) # first example
 # create list of all counts
 count_plots <- lapply(1:nsims, function(x){
   gplot(countfields[[x]]) +
@@ -268,6 +268,8 @@ for(i in 1:nsims){ # loop over different simulated populations
       strs <- data.frame(stratified(domain, "simp_strat", szs))
       # mean values of counts per stratum
       strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
+      # overall mean corrected for selection weights
+      sum(wgt * strs_mean$mean)
       # apply mean to settled area domain by stratum
       domain$pr_areawt <- strs_mean[domain$simp_strat, "mean"]
       
