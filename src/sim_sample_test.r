@@ -269,16 +269,22 @@ for(i in 1:nsims){ # loop over different simulated populations
       # mean values of counts per stratum
       strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
       # overall mean corrected for selection weights
-      sum(wgt * strs_mean$mean)
+      # sum(wgt * strs_mean$mean)
       # apply mean to settled area domain by stratum
       domain$pr_areawt <- strs_mean[domain$simp_strat, "mean"]
       
    ## sample weighted by approximate population density -- test preferential sampling corrections
-      # srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
+      srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
       # extract values from sampled points
-      # srs_pwgt <- domain[srs_pwgt,]
+      srs_pwgt <- domain[srs_pwgt,]
       # sample mean pop per pixel
+      sum()
+      # 1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * (sum(srs_pwgt$counts)/sz)
+      sum(1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * srs_pwgt$counts)/sz
+      (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz * srs_pwgt$counts
+      weighted.mean(srs_pwgt$counts, (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz)
       
+   ####  
       # per-pixel error metrics
       pred_errs[r, 4] <- mape(domain$counts, domain$pr_srs)
       pred_errs[r, 5] <- rmse(domain$counts, domain$pr_srs)
