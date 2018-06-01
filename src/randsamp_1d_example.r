@@ -5,8 +5,8 @@
 # there is a good chance that a small sample will more often come from the "tails."
 # The result will be an underestimate of the mean of the distribution.
 #
-# Chris Jochem
-# 24 May 2018
+# Chris Jochem, Eric Weber
+# 24 May 2018; Update 01 June 2018
 #
 
 
@@ -32,8 +32,11 @@ for(std in sds){
   y <- dnorm(x, mu, std)
   y_bar <- mean(y) # average value across domain
   
-  # storage array
+  # storage arrays
   samps <- array(data=NA, dim=c(nsamples, length(szs)))
+  sample.means <- array(data=NA, dim=c(nsamples, length(szs))) # array for the sample means
+  sample.vars1 <- array(data=NA, dim=c(nsamples, length(szs)))
+
   # repeat for different size samples
   for(sz in szs){
     for(i in 1:nsamples){
@@ -42,12 +45,17 @@ for(std in sds){
       ys_bar <- mean(y[s]) # sample mean
       
       samps[i, which(szs==sz)] <- mean(y[s] < y_bar) # what proportion are in tails?
+      sample.means[i, which(szs==sz)] <- ys_bar # store the sample mean
+      sample.vars1[i, which(szs==sz)] <- sum((y[s] - ys_bar)^2) / (sz * (sz-1)) # store variance
     }
   }
-  reslist[[which(sds==std)]] <- list(y, y_bar, mean(y < y_bar), cbind(1:nsamples,samps))
+  reslist[[which(sds==std)]] <- list(y, y_bar, mean(y < y_bar), 
+                                     cbind(1:nsamples,samps),
+                                     cbind(1:nsamples,sample.means),
+                                     cbind(1:nsamples,sample.vars1))
 }
 
-# plots
+# plots of sample distribution and mean
 gplots <- lapply(1:length(reslist), function(j){
   y <- reslist[[j]][[1]]
   y_bar <- reslist[[j]][[2]]
@@ -76,10 +84,29 @@ gplots <- lapply(1:length(reslist), function(j){
         xlab("Sample size") +
         theme_bw()
   
+  samp.mean.df <- data.frame(reslist[[1]][[5]])
+  names(samp.mean.df) <- c("id", paste0("sz_",szs))
+  samp.mean.df.reshaped <- reshape(samp.mean.df,
+                                   varying=paste0("sz_",szs),
+                                   v.names="samp_mean",
+                                   timevar="samp_sz",
+                                   times=szs,
+                                   direction="long")
+  
+  p3 <- ggplot(data=samp.mean.df.reshaped, aes(x=as.factor(samp_sz), y=samp_mean)) +
+        geom_boxplot(fill='gray88', color="gray40", show.legend=F) +
+        geom_hline(yintercept=y_bar, col="blue", size=1) +
+        stat_summary(fun.y=mean, color="black", fill="green2", geom="point", shape=21, size=3) +
+        ylab("Sample means") +
+        xlab("Sample size") +
+        theme_bw()
+
   # grid.arrange(p1, p2)
   # plot(arrangeGrob(p1, p2, ncol=2))
-  arrangeGrob(p1, p2, ncol=2)
+  arrangeGrob(p1, p2, p3, ncol=3)
 })
+
+# plots of variance
 
 # plot the list together
 do.call(grid.arrange, c(gplots, ncol=1))
