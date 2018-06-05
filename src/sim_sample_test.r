@@ -22,6 +22,8 @@ library(ggplot2)
 library(rasterVis)
 library(gridExtra)
 library(splitstackshape)
+library(Metrics)
+
 
 # simulation parameters
 nsims <- 10 # number of spatial fields to repeat
@@ -101,7 +103,7 @@ for(i in 1:nsims){
 # can save/output the list of simulated fields for replication study
 
 # visualise the results
-plot(countfields[[1]]) # first example
+#   plot(countfields[[1]]) # first example
 # create list of all counts
 count_plots <- lapply(1:nsims, function(x){
   gplot(countfields[[x]]) +
@@ -121,10 +123,19 @@ sampsz <- c(25,50,75,100,125,150,200,250,300,400,500) # CHANGE HERE
 
 # preallocate storage for the output
 pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
-                               rep(sampsz, each=ndraws),
-                               NA, NA), # create multiple cols for error metrics
-                    nrow=nsims*length(sampsz)*ndraws, ncol=4)
-# Loop and evaluate all
+                               rep(sampsz, each=ndraws), 
+                               array(NA,c(nsims*length(sampsz)*ndraws, 7))), # create multiple cols for error metrics
+                    nrow=nsims*length(sampsz)*ndraws, ncol=9)
+# storage for total/sub population comparison
+pred_pop <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
+                              rep(sampsz, each=ndraws),
+                              array(NA,c(nsims*length(sampsz)*ndraws, 8))),
+                   nrow=nsims*length(sampsz)*ndraws, ncol=10)
+
+# storage to record sample locations from SRS
+srs_locn <- vector("list", length=nsims)
+
+# Loop and evaluate 
 r <- 1 # counter to fill in the output
 for(i in 1:nsims){ # loop over different simulated populations
   print(i)
@@ -142,11 +153,17 @@ for(i in 1:nsims){ # loop over different simulated populations
   # sampling from within settlement (assumes perfect residential classification)
   # extract records to a data.frame (ok for small simulations)
   domain <- as.data.frame(settle, xy=TRUE)
+  # get cell numbers for linking to other sub-regions
+  domain$cnum <- cellFromXY(settle, domain[,c("x","y")])
+  # keep only settled areas b/c conversion takes all cells
   domain <- domain[domain$counts>0,]
   # extract observed (simulated) population values for all locations
   domain$counts <- extract(count, domain[,c("x","y")])
   # "true" average population per pixel
     mean(domain$counts)
+    
+  # store the domain for sample counts
+  srs_locn[[i]] <- domain
     
   # create a high pop sub-domain area to estimate totals
   # analogous to having a capital city within a regional sampling domain
@@ -178,9 +195,12 @@ for(i in 1:nsims){ # loop over different simulated populations
   # create sub-region extent
   subreg <- extent(count, row-trows, row+brows, col-lcols, col+rcols)
     plot(count); points(domain[which.max(domain$counts),c("x","y")]); plot(subreg, add=T) # example plot
-  # extract subregion to new population grid
-  subpop <- crop(count, subreg)
-    # sum(values(subpop)) # quick count of total pop
+  # identify sub-region within the domain
+  subcells <- cellsFromExtent(count, subreg) # find the cell numbers (matches domain and settle and count)
+  domain[domain$cnum %in% subcells, "subdomain"] <- 1 # cell is within the extent of sub-region
+  domain[is.na(domain$subdomain), "subdomain"] <- 0 # reclass NA for quick subsetting
+  # total "true" population in sub-region
+  subpop <- sum(domain[domain$subdomain==1, "counts"])
   
   ## stratify the settled area - multiple methods
   # make 5 horizontal strata (naive stratification for comparison)
@@ -203,23 +223,41 @@ for(i in 1:nsims){ # loop over different simulated populations
   
   for(sz in sampsz){ # vary total sample size
     print(sz)
+    # add column for each sample size
+    srs_locn[[i]][[paste0("sz_",sz)]] <- 0
+
   # repeated sample realisations
     for(d in 1:ndraws){ 
+      # store sample size as proportion of settled area
+      pred_errs[r, 3] <- sz / totsettle
+      # store "true" populations
+      pred_pop[r, 3] <- totpop
+      pred_pop[r, 4] <- subpop
       # set.seed(d) # ?
     # sampling methods:
     ## simple random sample ##
       srs <- sample(1:nrow(domain), size=sz, replace=F)
       # extract values of sampled points
       srs <- domain[srs,]
+        # plot(count); points(srs[,c("x","y")]) # sample locns
+      # store iterative count of selected locns
+      srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] <- 
+        srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] + 1
       # sample mean pop per pixel
       samp_mean <- mean(srs$counts)
+      # apply mean to settled area domain
+      domain$pr_srs <- samp_mean
       
     ## stratified random sample - equal weight ##
       # equal sample size per stratum
       szs <- round(sz / nstrat)
       # draw sample
       strs <- data.frame(stratified(domain, "simp_strat", szs))
-      # TO-DO: calculate stratified mean values of [counts]
+        # plot(count); points(strs[,c("x","y")])
+      # mean values of counts per stratum
+      strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
+      # apply mean to settled area domain by stratum
+      domain$pr_strs <- strs_mean[domain$simp_strat, "mean"] # expand by domain
       
    ## stratified random sample - prop to settled area ##
       wgt <- zonal(settle, strat, sum)
@@ -228,22 +266,129 @@ for(i in 1:nsims){ # loop over different simulated populations
       szs <- setNames(round(wgt*sz), unique(values(strat)))
       # draw sample
       strs <- data.frame(stratified(domain, "simp_strat", szs))
-      # TO-DO: calculate stratified mean values
+      # mean values of counts per stratum
+      strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
+      # overall mean corrected for selection weights
+      # sum(wgt * strs_mean$mean)
+      # apply mean to settled area domain by stratum
+      domain$pr_areawt <- strs_mean[domain$simp_strat, "mean"]
       
-   ## sample weighted by approximate population density
+   ## sample weighted by approximate population density -- test preferential sampling corrections
       srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
       # extract values from sampled points
       srs_pwgt <- domain[srs_pwgt,]
-      # sample mean pop per pixel
+      # weighted pop total
+      # 1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * (sum(srs_pwgt$counts)/sz)
+      sum(1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * srs_pwgt$counts)/sz
+      # (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz * srs_pwgt$counts
+      # weighted.mean(srs_pwgt$counts, (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz)
       
+   ####  
+      # per-pixel error metrics
+      pred_errs[r, 4] <- mape(domain$counts, domain$pr_srs)
+      pred_errs[r, 5] <- rmse(domain$counts, domain$pr_srs)
       
-      # TO-DO: calculate and store the comparison of total population
-      # TO-DO: compare prediction for sub-region population
-      # pred_errs[r,3] <- ERROR calculation storage
-      # pred_errs[r, 4] <- ERROR calculation storage
+      pred_errs[r, 6] <- mape(domain$counts, domain$pr_strs)
+      pred_errs[r, 7] <- rmse(domain$counts, domain$pr_strs)
+      
+      pred_errs[r, 8] <- mape(domain$counts, domain$pr_areawt)
+      pred_errs[r, 9] <- rmse(domain$counts, domain$pr_areawt)
+      
+      # calculate and store the total and subdomain populations
+      pred_pop[r, 5] <- sum(domain$pr_srs)
+      pred_pop[r, 6] <- sum(domain[domain$subdomain==1, "pr_srs"])
+      
+      pred_pop[r, 7] <- sum(domain$pr_strs)
+      pred_pop[r, 8] <- sum(domain[domain$subdomain==1, "pr_strs"])
+      
+      pred_pop[r, 9] <- sum(domain$pr_areawt)
+      pred_pop[r, 10] <- sum(domain[domain$subdomain==1, "pr_areawt"])
+
       r <- r+1
     }
   }
 }
 
+#####
 # process results
+# convert errors to datafraem for ggplot
+err.df <- data.frame(pred_errs)
+names(err.df) <- c("sim","sz","pct_samp","mape_srs","rmse_srs","mape_strs","rmse_strs","mape_areawt","rmse_areawt")
+# split
+err.df.mape <- err.df[,c("sim","sz","pct_samp","mape_srs","mape_strs","mape_areawt")]
+err.df.rmse <- err.df[,c("sim","sz","pct_samp","rmse_srs","rmse_strs","rmse_areawt")]
+# convert to long format
+err.rmse.l <- reshape(err.df.rmse,
+                    varying=c("rmse_srs","rmse_strs","rmse_areawt"),
+                    v.names="err",
+                    timevar="est",
+                    times=c("rmse_srs","rmse_strs","rmse_areawt"),
+                    direction="long")
+
+err.mape.l <- reshape(err.df.mape,
+                    varying=c("mape_srs","mape_strs","mape_areawt"),
+                    v.names="err",
+                    timevar="est",
+                    times=c("mape_srs","mape_strs","mape_areawt"),
+                    direction="long")
+
+# plot EA-level error metrics
+ggplot(data=err.rmse.l, aes(x=as.factor(sz), y=err, fill=est)) +
+  geom_boxplot() +
+  facet_wrap(~sim, scales="free", ncol=2) +
+  theme_bw()
+
+ggplot(data=err.mape.l, aes(x=as.factor(sz), y=err, fill=est)) +
+  geom_boxplot() +
+  facet_wrap(~sim, scales="free", ncol=2) +
+  theme_bw()
+
+
+
+# convert population to dataframe for ggplot
+pop.df <- data.frame(pred_pop)
+names(pop.df) <- c("sim","sz","totpop","subpop","pr_srs","pr_srs_d","pr_strs","pr_strs_d","pr_areawt","pr_areawt_d")
+# subdomain data frame
+subpop.df <- pop.df[,c("sim","sz","totpop","subpop","pr_srs_d","pr_strs_d","pr_areawt_d")]
+pop.df <- pop.df[,!names(pop.df) %in% c("pr_srs_d","pr_strs_d","pr_areawt_d")]
+
+
+# pop records convert to long format
+pop.df.l <- reshape(pop.df,
+                    varying=c("pr_srs","pr_strs","pr_areawt"),
+                    v.names="pop",
+                    timevar="est",
+                    times=c("pr_srs","pr_strs","pr_areawt"),
+                    direction="long")
+# find simulation-specific total population
+totpop <- unique(pop.df[,c("sim","totpop")])
+# plot total popuation predictions
+ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
+  geom_boxplot() +
+  facet_wrap(~sim, scales="free", ncol=2) +
+  geom_hline(data=totpop, aes(yintercept=totpop, col="red"), show.legend=F) +
+  theme_bw()
+
+# # plot 1D representation of population
+# ggplot(domain, aes(x=cnum, y=counts)) + 
+#   geom_line() + 
+#   geom_smooth(method="loess", se=F, span=.09) +
+#   theme_bw()
+# 
+# # compare sample selection locations
+# df <- srs_locn[[9]] # example
+# 
+# ggplot(data=df, aes(x=cnum, y=counts)) + 
+#   geom_line(colour="grey") + 
+#   geom_smooth(method="loess", se=F, span=0.09) + 
+#   geom_hline(aes(yintercept=mean(counts), col="red"), show.legend=F) +
+#   geom_rug(aes(x=cnum, alpha=sz_50), sides="b") +
+#   # geom_smooth(aes(x=cnum, y=sz_50*100), method="loess", span=0.05) +
+#   theme_bw()
+# 
+# ggplot(data=df, aes(x=cnum, y=sz_50)) + 
+#   geom_line(colour="grey") + 
+#   geom_smooth(method="loess", se=F, span=0.05) + 
+#   # geom_hline(aes(yintercept=mean(counts), col="red"), show.legend=F) +
+#   # geom_rug(aes(x=cnum, alpha=sz_25)) +
+#   theme_bw()
