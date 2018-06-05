@@ -24,6 +24,8 @@ library(gridExtra)
 library(splitstackshape)
 library(Metrics)
 
+## load code to produce model-based estimates ##
+source("./src/model_est.r")
 
 # simulation parameters
 nsims <- 10 # number of spatial fields to repeat
@@ -162,6 +164,10 @@ for(i in 1:nsims){ # loop over different simulated populations
   # "true" average population per pixel
     mean(domain$counts)
     
+  # extract covariates - for model-based estimates
+  domain$elev <- extract(elev, domain[,c("x","y")])
+  domain$trend <- extract(trend, domain[,c("x","y")])
+    
   # store the domain for sample counts
   srs_locn[[i]] <- domain
     
@@ -247,6 +253,9 @@ for(i in 1:nsims){ # loop over different simulated populations
       samp_mean <- mean(srs$counts)
       # apply mean to settled area domain
       domain$pr_srs <- samp_mean
+      
+    ### Model-based estimates from random sample ###
+    ## 
       
     ## stratified random sample - equal weight ##
       # equal sample size per stratum
