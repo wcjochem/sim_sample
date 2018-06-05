@@ -84,7 +84,7 @@ gplots <- lapply(1:length(reslist), function(j){
         xlab("Sample size") +
         theme_bw()
   
-  samp.mean.df <- data.frame(reslist[[1]][[5]])
+  samp.mean.df <- data.frame(reslist[[j]][[5]])
   names(samp.mean.df) <- c("id", paste0("sz_",szs))
   samp.mean.df.reshaped <- reshape(samp.mean.df,
                                    varying=paste0("sz_",szs),
@@ -100,13 +100,42 @@ gplots <- lapply(1:length(reslist), function(j){
         ylab("Sample means") +
         xlab("Sample size") +
         theme_bw()
+  
+  vardf <- data.frame(reslist[[j]][[6]])
+  names(vardf) <- c("id", paste0("sz_",szs))
+  
+  vardf.l <- reshape(vardf,
+                     varying=paste0("sz_",szs),
+                     v.names="samp_var",
+                     timevar="samp_sz",
+                     times=szs,
+                     direction="long")
+  # combine mean/variance
+  samp_mean_var <- merge(samp.mean.df.reshaped, vardf.l, by=c("id","samp_sz"))
+  # upper/lower intervals
+  t.95 = qt(0.975, samp_mean_var$samp_sz - 1)
+  samp_mean_var$margin <- t.95 * sqrt(samp_mean_var$samp_var)
+  samp_mean_var$upper <- samp_mean_var$samp_mean + samp_mean_var$margin
+  samp_mean_var$lower <- samp_mean_var$samp_mean - samp_mean_var$margin
+  # sort by mean
+  samp_mean_var <- samp_mean_var[order(samp_mean_var$samp_sz,samp_mean_var$samp_mean, decreasing=F),]
+  samp_mean_var$newid <- rep(1:nsamples, times=length(szs))
+  # plot
+  p4 <- ggplot(samp_mean_var, aes(x=newid, y=samp_mean, col=as.factor(samp_sz))) +
+    geom_point(show.legend=F) +
+    geom_linerange(aes(ymin=lower, ymax=upper), show.legend=F) +
+    facet_wrap(~ as.factor(samp_sz), scales="free") +
+    geom_hline(aes(yintercept=y_bar, group=as.factor(samp_sz)), col="blue", size=1) +
+    theme_bw()
 
   # grid.arrange(p1, p2)
   # plot(arrangeGrob(p1, p2, ncol=2))
   arrangeGrob(p1, p2, p3, ncol=3)
 })
 
-# plots of variance
-
 # plot the list together
 do.call(grid.arrange, c(gplots, ncol=1))
+
+
+
+
