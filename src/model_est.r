@@ -6,7 +6,7 @@
 # 05 June 2018
 #
 
-require(inlabru) 
+# require(inlabru) 
 require(INLA)
 
 ## simplified Bayesian geostatistcal model ##
