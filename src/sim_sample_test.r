@@ -120,19 +120,22 @@ marrangeGrob(count_plots, nrow=5, ncol=2)
 
 
 ## implement sampling strategies
+# different strategies -- CHANGE HERE
+# list used to automate data storage creation and logic to limit evaluation steps
+strats <- c("pr_srs", "mbg_srs", "pr_strs", "pr_areawt", "mbg_pwgt")
 # different sample sizes
 sampsz <- c(25,50,75,100,125,150,200,250,300,400,500) # CHANGE HERE
 
 # preallocate storage for the output
 pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
                                rep(sampsz, each=ndraws), 
-                               array(NA,c(nsims*length(sampsz)*ndraws, 7))), # create multiple cols for error metrics
-                    nrow=nsims*length(sampsz)*ndraws, ncol=9)
+                               array(NA,c(nsims*length(sampsz)*ndraws, (length(strats)*2+1) ))), # create multiple cols for error metrics
+                    nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2+3) # 3 cols needed for initial storage, 2 each for a method
 # storage for total/sub population comparison
 pred_pop <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
                               rep(sampsz, each=ndraws),
-                              array(NA,c(nsims*length(sampsz)*ndraws, 8))),
-                   nrow=nsims*length(sampsz)*ndraws, ncol=10)
+                              array(NA,c(nsims*length(sampsz)*ndraws, (length(strats)*2+2) ))),
+                   nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2+4)
 
 # storage to record sample locations from SRS
 srs_locn <- vector("list", length=nsims)
@@ -227,6 +230,7 @@ for(i in 1:nsims){ # loop over different simulated populations
   # extract values to the sample domain
   domain$pop_wgt <- extract(count_agg5, domain[,c("x","y")])
   
+  ### loop over samples, make repeated draws ###
   for(sz in sampsz){ # vary total sample size
     print(sz)
     # add column for each sample size
@@ -293,7 +297,7 @@ for(i in 1:nsims){ # loop over different simulated populations
       srs_pwgt <- domain[srs_pwgt,]
       # weighted pop total
       # 1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * (sum(srs_pwgt$counts)/sz)
-      sum(1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * srs_pwgt$counts)/sz
+      # sum(1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * srs_pwgt$counts)/sz
       # (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz * srs_pwgt$counts
       # weighted.mean(srs_pwgt$counts, (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz)
       
