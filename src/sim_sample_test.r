@@ -127,16 +127,17 @@ strats <- c("pr_srs", "mbg_srs", "pr_strs", "pr_areawt", "mbg_pwgt")
 sampsz <- c(25,50,75,100,125,150,200,250,300,400,500) # CHANGE HERE
 
 # preallocate storage for the output
-pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
-                               rep(sampsz, each=ndraws), 
-                               array(NA,c(nsims*length(sampsz)*ndraws, (length(strats)*2+1) ))), # create multiple cols for error metrics
-                    nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2+3) # 3 cols needed for initial storage, 2 each for a method
+# pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
+#                                rep(sampsz, each=ndraws), 
+#                                array(NA,c(nsims*length(sampsz)*ndraws, (length(strats)*2+1) ))), # create multiple cols for error metrics
+#                     nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2+3) # 3 cols needed for initial storage, 2 each for a method
+pred_errs <- matrix(NA, nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2)
 # storage for total/sub population comparison
-pred_pop <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
-                              rep(sampsz, each=ndraws),
-                              array(NA,c(nsims*length(sampsz)*ndraws, (length(strats)*2+2) ))),
-                   nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2+4)
-
+# pred_pop <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
+#                               rep(sampsz, each=ndraws),
+#                               array(NA,c(nsims*length(sampsz)*ndraws, (length(strats)*2+2) ))),
+#                    nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2+4)
+pred_pop <- matrix(NA, nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2)
 # storage to record sample locations from SRS
 srs_locn <- vector("list", length=nsims)
 
@@ -310,31 +311,25 @@ for(i in 1:nsims){ # loop over different simulated populations
         # weighted.mean(srs_pwgt$counts, (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz)
       }
       
-   ####  
+   #### Process results
       # per-pixel error metrics
-      pred_errs[r, 4] <- mape(domain$counts, domain$pr_srs)
-      pred_errs[r, 5] <- rmse(domain$counts, domain$pr_srs)
-      
-      pred_errs[r, 6] <- mape(domain$counts, domain$pr_strs)
-      pred_errs[r, 7] <- rmse(domain$counts, domain$pr_strs)
-      
-      pred_errs[r, 8] <- mape(domain$counts, domain$pr_areawt)
-      pred_errs[r, 9] <- rmse(domain$counts, domain$pr_areawt)
-      
+      for(s in strats){ # each estimation technique
+        idx <- which(strats==s)
+        pred_errs[r, idx] <- mape(domain$counts, domain[[s]])
+        pred_errs[r, idx+length(strats)] <- rmse(domain$counts, domain[[s]])
+      }
       # calculate and store the total and subdomain populations
-      pred_pop[r, 5] <- sum(domain$pr_srs)
-      pred_pop[r, 6] <- sum(domain[domain$subdomain==1, "pr_srs"])
-      
-      pred_pop[r, 7] <- sum(domain$pr_strs)
-      pred_pop[r, 8] <- sum(domain[domain$subdomain==1, "pr_strs"])
-      
-      pred_pop[r, 9] <- sum(domain$pr_areawt)
-      pred_pop[r, 10] <- sum(domain[domain$subdomain==1, "pr_areawt"])
+      for(s in strats){ # each estimation technique
+        idx <- which(strats==s)
+        pred_pop[r, idx] <- sum(domain[[s]]) # total population
+        pred_pop[r, idx+length(strats)] <- sum(domain[domain$subdomain==1, s]) # small area
+      }
 
       r <- r+1
     }
   }
 }
+
 
 #####
 # process results
