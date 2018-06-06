@@ -246,60 +246,69 @@ for(i in 1:nsims){ # loop over different simulated populations
       # set.seed(d) # ?
     # sampling methods:
     ## simple random sample ##
-      srs <- sample(1:nrow(domain), size=sz, replace=F)
-      # extract values of sampled points
-      srs <- domain[srs,]
-        # plot(count); points(srs[,c("x","y")]) # sample locns
-      # store iterative count of selected locns
-      srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] <- 
-        srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] + 1
-      # sample mean pop per pixel
-      samp_mean <- mean(srs$counts)
-      # apply mean to settled area domain
-      domain$pr_srs <- samp_mean
+      if("pr_srs" %in% strats){
+        srs <- sample(1:nrow(domain), size=sz, replace=F)
+        # extract values of sampled points
+        srs <- domain[srs,]
+          # plot(count); points(srs[,c("x","y")]) # sample locns
+        # store iterative count of selected locns
+        srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] <- 
+          srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] + 1
+        # sample mean pop per pixel
+        samp_mean <- mean(srs$counts)
+        # apply mean to settled area domain
+        domain$pr_srs <- samp_mean
+      }
       
     ### Model-based estimates from random sample ###
     ## model-based geostats ##
-      mbg_srs <- mbg(samp=srs,
-                     pred=domain,
-                     bound=as(extent(count), "SpatialPolygons"))
-      # extract the predictions for each location
-      
-      
+      if("mbg_srs" %in% strats){
+        mbg_srs <- mbg(samp=srs,
+                       pred=domain,
+                       bound=as(extent(count), "SpatialPolygons"))
+        # extract the predictions for each location        
+      }
+
     ## stratified random sample - equal weight ##
       # equal sample size per stratum
-      szs <- round(sz / nstrat)
-      # draw sample
-      strs <- data.frame(stratified(domain, "simp_strat", szs))
-        # plot(count); points(strs[,c("x","y")])
-      # mean values of counts per stratum
-      strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
-      # apply mean to settled area domain by stratum
-      domain$pr_strs <- strs_mean[domain$simp_strat, "mean"] # expand by domain
-      
+      if("pr_strs" %in% strats){
+        szs <- round(sz / nstrat)
+        # draw sample
+        strs <- data.frame(stratified(domain, "simp_strat", szs))
+          # plot(count); points(strs[,c("x","y")])
+        # mean values of counts per stratum
+        strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
+        # apply mean to settled area domain by stratum
+        domain$pr_strs <- strs_mean[domain$simp_strat, "mean"] # expand by domain
+      }
+
    ## stratified random sample - prop to settled area ##
-      wgt <- zonal(settle, strat, sum)
-      wgt <- wgt[,'value'] / totsettle
-      # sample sizes - note rounding may causes some different totals
-      szs <- setNames(round(wgt*sz), unique(values(strat)))
-      # draw sample
-      strs <- data.frame(stratified(domain, "simp_strat", szs))
-      # mean values of counts per stratum
-      strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
-      # overall mean corrected for selection weights
-      # sum(wgt * strs_mean$mean)
-      # apply mean to settled area domain by stratum
-      domain$pr_areawt <- strs_mean[domain$simp_strat, "mean"]
+      if("pr_areawt" %in% strats){
+        wgt <- zonal(settle, strat, sum)
+        wgt <- wgt[,'value'] / totsettle
+        # sample sizes - note rounding may causes some different totals
+        szs <- setNames(round(wgt*sz), unique(values(strat)))
+        # draw sample
+        strs <- data.frame(stratified(domain, "simp_strat", szs))
+        # mean values of counts per stratum
+        strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
+        # overall mean corrected for selection weights
+        # sum(wgt * strs_mean$mean)
+        # apply mean to settled area domain by stratum
+        domain$pr_areawt <- strs_mean[domain$simp_strat, "mean"]        
+      }
       
    ## sample weighted by approximate population density -- test preferential sampling corrections
-      srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
-      # extract values from sampled points
-      srs_pwgt <- domain[srs_pwgt,]
-      # weighted pop total
-      # 1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * (sum(srs_pwgt$counts)/sz)
-      # sum(1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * srs_pwgt$counts)/sz
-      # (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz * srs_pwgt$counts
-      # weighted.mean(srs_pwgt$counts, (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz)
+      if("mbg_pwgt" %in% strats){
+        srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
+        # extract values from sampled points
+        srs_pwgt <- domain[srs_pwgt,]
+        # weighted pop total
+        # 1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * (sum(srs_pwgt$counts)/sz)
+        # sum(1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * srs_pwgt$counts)/sz
+        # (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz * srs_pwgt$counts
+        # weighted.mean(srs_pwgt$counts, (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz)
+      }
       
    ####  
       # per-pixel error metrics
