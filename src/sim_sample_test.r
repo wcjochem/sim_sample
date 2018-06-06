@@ -128,7 +128,7 @@ sampsz <- c(25,50,75,100,125,150,200,250,300,400,500) # CHANGE HERE
 
 # preallocate storage for the output
 # pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
-#                                rep(sampsz, each=ndraws), 
+#                                rep(sampsz, each=ndraws),
 #                                array(NA,c(nsims*length(sampsz)*ndraws, (length(strats)*2+1) ))), # create multiple cols for error metrics
 #                     nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2+3) # 3 cols needed for initial storage, 2 each for a method
 pred_errs <- matrix(NA, nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2)
@@ -329,7 +329,10 @@ for(i in 1:nsims){ # loop over different simulated populations
     }
   }
 }
-
+# add the labels to matrix of results
+reslabels <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws), rep(sampsz, each=ndraws)), nrow=nsims*length(sampsz)*ndraws, ncol=2)
+pred_errs <- cbind(reslabels, pred_errs)
+pred_pop <- cbind(reslabels, pred_pop)
 
 #####
 # process results
