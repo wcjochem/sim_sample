@@ -255,7 +255,12 @@ for(i in 1:nsims){ # loop over different simulated populations
       domain$pr_srs <- samp_mean
       
     ### Model-based estimates from random sample ###
-    ## 
+    ## model-based geostats ##
+      mbg_srs <- mbg(samp=srs,
+                     pred=domain,
+                     bound=as(extent(count), "SpatialPolygons"))
+      # extract the predictions for each location
+      
       
     ## stratified random sample - equal weight ##
       # equal sample size per stratum
