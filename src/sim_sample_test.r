@@ -28,10 +28,10 @@ library(Metrics)
 source("./src/model_est.r")
 
 # simulation parameters
-nsims <- 10 # number of spatial fields to repeat
+nsims <- 1 # number of spatial fields to repeat
 regionsize <- 50 # dim of square region
 phi <- 0.05 # smoothness parameter
-ndraws <- 100 # number of repeated samples
+ndraws <- 1 # number of repeated samples
 
 # abundance mdoel parameters
 beta0 <- .4 # intercept
@@ -127,16 +127,13 @@ strats <- c("pr_srs", "mbg_srs", "pr_strs", "pr_areawt", "mbg_pwgt")
 sampsz <- c(25,50,75,100,125,150,200,250,300,400,500) # CHANGE HERE
 
 # preallocate storage for the output
-# pred_errs <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
-#                                rep(sampsz, each=ndraws),
-#                                array(NA,c(nsims*length(sampsz)*ndraws, (length(strats)*2+1) ))), # create multiple cols for error metrics
-#                     nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2+3) # 3 cols needed for initial storage, 2 each for a method
+# labels of repetitions, sample size, and observed values
+reslabels <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws), 
+                               rep(sampsz, each=ndraws), NA, NA, NA), 
+                    nrow=nsims*length(sampsz)*ndraws, ncol=5)
+# storage for per pixel errors
 pred_errs <- matrix(NA, nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2)
 # storage for total/sub population comparison
-# pred_pop <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws),
-#                               rep(sampsz, each=ndraws),
-#                               array(NA,c(nsims*length(sampsz)*ndraws, (length(strats)*2+2) ))),
-#                    nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2+4)
 pred_pop <- matrix(NA, nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2)
 # storage to record sample locations from SRS
 srs_locn <- vector("list", length=nsims)
@@ -240,10 +237,10 @@ for(i in 1:nsims){ # loop over different simulated populations
   # repeated sample realisations
     for(d in 1:ndraws){ 
       # store sample size as proportion of settled area
-      pred_errs[r, 3] <- sz / totsettle
+      reslabels[r, 3] <- sz / totsettle
       # store "true" populations
-      pred_pop[r, 3] <- totpop
-      pred_pop[r, 4] <- subpop
+      reslabels[r, 4] <- totpop
+      reslabels[r, 5] <- subpop
       # set.seed(d) # ?
     # sampling methods:
     ## simple random sample ##
@@ -261,13 +258,14 @@ for(i in 1:nsims){ # loop over different simulated populations
         domain$pr_srs <- samp_mean
       }
       
-    ### Model-based estimates from random sample ###
-    ## model-based geostats ##
+    ## Model-based estimates from random sample ##
+    # Geostats #
       if("mbg_srs" %in% strats){
         mbg_srs <- mbg(samp=srs,
                        pred=domain,
                        bound=as(extent(count), "SpatialPolygons"))
-        # extract the predictions for each location        
+        # extract the predictions for each location 
+        domain$mbg_srs <- mbg_srs$predvals
       }
 
     ## stratified random sample - equal weight ##
@@ -300,6 +298,7 @@ for(i in 1:nsims){ # loop over different simulated populations
       }
       
    ## sample weighted by approximate population density -- test preferential sampling corrections
+   ## Model-based estimates ##
       if("mbg_pwgt" %in% strats){
         srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
         # extract values from sampled points
@@ -309,9 +308,15 @@ for(i in 1:nsims){ # loop over different simulated populations
         # sum(1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * srs_pwgt$counts)/sz
         # (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz * srs_pwgt$counts
         # weighted.mean(srs_pwgt$counts, (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz)
+        # model results
+        mbg_pwgt <- mbg(samp=srs_pwgt,
+                       pred=domain,
+                       bound=as(extent(count), "SpatialPolygons"))
+        # extract the predictions for each location 
+        domain$mbg_pwgt <- mbg_pwgt$predvals
       }
       
-   #### Process results
+   #### Process results ####
       # per-pixel error metrics
       for(s in strats){ # each estimation technique
         idx <- which(strats==s)
@@ -330,7 +335,6 @@ for(i in 1:nsims){ # loop over different simulated populations
   }
 }
 # add the labels to matrix of results
-reslabels <- matrix(data=cbind(rep(1:nsims, each=length(sampsz)*ndraws), rep(sampsz, each=ndraws)), nrow=nsims*length(sampsz)*ndraws, ncol=2)
 pred_errs <- cbind(reslabels, pred_errs)
 pred_pop <- cbind(reslabels, pred_pop)
 
@@ -338,23 +342,23 @@ pred_pop <- cbind(reslabels, pred_pop)
 # process results
 # convert errors to datafraem for ggplot
 err.df <- data.frame(pred_errs)
-names(err.df) <- c("sim","sz","pct_samp","mape_srs","rmse_srs","mape_strs","rmse_strs","mape_areawt","rmse_areawt")
+names(err.df) <- c("sim","sz","pct_samp","totpop","subpop", paste0("mape_", strats), paste0("rmse_", strats))
 # split
-err.df.mape <- err.df[,c("sim","sz","pct_samp","mape_srs","mape_strs","mape_areawt")]
-err.df.rmse <- err.df[,c("sim","sz","pct_samp","rmse_srs","rmse_strs","rmse_areawt")]
+err.df.mape <- err.df[,c("sim","sz","pct_samp", paste0("mape_", strats))]
+err.df.rmse <- err.df[,c("sim","sz","pct_samp",paste0("rmse_", strats))]
 # convert to long format
 err.rmse.l <- reshape(err.df.rmse,
-                    varying=c("rmse_srs","rmse_strs","rmse_areawt"),
+                    varying=paste0("rmse_", strats),
                     v.names="err",
                     timevar="est",
-                    times=c("rmse_srs","rmse_strs","rmse_areawt"),
+                    times=paste0("rmse_", strats),
                     direction="long")
 
 err.mape.l <- reshape(err.df.mape,
-                    varying=c("mape_srs","mape_strs","mape_areawt"),
+                    varying=paste0("mape_", strats),
                     v.names="err",
                     timevar="est",
-                    times=c("mape_srs","mape_strs","mape_areawt"),
+                    times=paste0("mape_", strats),
                     direction="long")
 
 # plot EA-level error metrics
@@ -372,18 +376,18 @@ ggplot(data=err.mape.l, aes(x=as.factor(sz), y=err, fill=est)) +
 
 # convert population to dataframe for ggplot
 pop.df <- data.frame(pred_pop)
-names(pop.df) <- c("sim","sz","totpop","subpop","pr_srs","pr_srs_d","pr_strs","pr_strs_d","pr_areawt","pr_areawt_d")
+names(pop.df) <- c("sim","sz","pct_samp","totpop","subpop", strats, paste0(strats, "_d"))
 # subdomain data frame
-subpop.df <- pop.df[,c("sim","sz","totpop","subpop","pr_srs_d","pr_strs_d","pr_areawt_d")]
-pop.df <- pop.df[,!names(pop.df) %in% c("pr_srs_d","pr_strs_d","pr_areawt_d")]
+subpop.df <- pop.df[,c("sim","sz","pct_samp","totpop", paste0(strats, "_d"))]
+pop.df <- pop.df[,!names(pop.df) %in% paste0(strats, "_d")]
 
 
 # pop records convert to long format
 pop.df.l <- reshape(pop.df,
-                    varying=c("pr_srs","pr_strs","pr_areawt"),
+                    varying=strats,
                     v.names="pop",
                     timevar="est",
-                    times=c("pr_srs","pr_strs","pr_areawt"),
+                    times=strats,
                     direction="long")
 # find simulation-specific total population
 totpop <- unique(pop.df[,c("sim","totpop")])
