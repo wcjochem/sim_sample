@@ -31,15 +31,15 @@ source("./src/model_est.r")
 nsims <- 1 # number of spatial fields to repeat
 regionsize <- 50 # dim of square region
 phi <- 0.05 # smoothness parameter
-ndraws <- 100 # number of repeated samples
+ndraws <- 10 # number of repeated samples
 
 # implement sampling strategies
 # different strategies -- CHANGE HERE
 # list used to automate data storage creation and logic to limit evaluation steps
-strats <- c("pr_srs", "mbg_srs", "pr_strs", "pr_areawt", "mbg_pwgt")
+strats <- c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_pwgt","pwgt_over")
 # different sample sizes
 # sampsz <- c(50,100,150,200,250,300,350,400) # CHANGE HERE
-sampsz <- c(200) # CHANGE HERE
+sampsz <- c(100,150,200) # CHANGE HERE
 
 # abundance model parameters
 beta0 <- .4 # intercept
@@ -213,7 +213,7 @@ for(i in 1:nsims){ # loop over different simulated populations
   }
   # create sub-region extent
   subreg <- extent(count, row-trows, row+brows, col-lcols, col+rcols)
-    plot(count); points(domain[which.max(domain$counts),c("x","y")]); plot(subreg, add=T) # example plot
+    plot(count); plot(subreg, add=T); points(domain[which.max(domain$counts),c("x","y")]) # example plot
   # identify sub-region within the domain
   subcells <- cellsFromExtent(count, subreg) # find the cell numbers (matches domain and settle and count)
   domain[domain$cnum %in% subcells, "subdomain"] <- 1 # cell is within the extent of sub-region
@@ -312,9 +312,9 @@ for(i in 1:nsims){ # loop over different simulated populations
    ## sample weighted by approximate population density -- test preferential sampling corrections
    ## Model-based estimates ##
       if("mbg_pwgt" %in% strats){
-        srs_pwgt <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
+        pwgt_samps <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
         # extract values from sampled points
-        srs_pwgt <- domain[srs_pwgt,]
+        srs_pwgt <- domain[pwgt_samps,]
         # weighted pop total
         # 1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * (sum(srs_pwgt$counts)/sz)
         # sum(1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * srs_pwgt$counts)/sz
@@ -326,34 +326,45 @@ for(i in 1:nsims){ # loop over different simulated populations
                        bound=as(extent(count), "SpatialPolygons"))
         # extract the predictions for each location 
         domain$mbg_pwgt <- mbg_pwgt$predvals
-        
-      ## spatial oversample using population-weighted sample ##
-        if("pwgt_over" %in% strats){
-          # check distribution of sample
-          sample_dist <- table(srs_pwgt$oversamp)
-          # which areas have no samples
-          missed <- !settle_agg[!is.na(settle_agg)] %in% as.numeric(names(sample_dist))
-          missed <- settle_agg[!is.na(settle_agg)][missed]
-          # find available to drop (must >1 sample in cell)
-          avail <- as.numeric(names(sample_dist[sample_dist>1]))
-          # drop from sample in available cells a random selection of sites
-          drops <- sample(1:nrow(srs_pwgt[srs_pwgt$oversamp %in% avail,]), size=length(missed), replace=F)
-          srs_pwgt <- srs_pwgt[-drops,]
-          # update with new sample - 1 per unsampled super cell
-          for(c in missed){
-            # only select within the large super cell
-            newdomain <- domain[domain$oversamp==c,]
-            # draw 1 sample in the area and add to the sample
-            newsample <- sample(1:nrow(newdomain), size=1, 
-                                replace=F, prob=domain[domain$oversamp==c,"pop_wgt"]) # using population weights
-            srs_pwgt <- rbind(srs_pwgt, newdomain[newsample,])
-          }
-          # estimation
-          
-        }        
-      }
-
-
+      }  
+      
+    ## spatial oversample using population-weighted sample ##
+    ## model-based estimates ##
+      if("pwgt_over" %in% strats){
+        if(!"mbg_pwgt" %in% strats){ # in case someone skipped previous method
+          pwgt_samps <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
+          # extract values from sampled points
+          srs_pwgt <- domain[pwgt_samps,]
+        } else{
+          srs_pwgt <- domain[pwgt_samps,] # update sample with all domain fields
+        }
+        # check distribution of sample
+        sample_dist <- table(srs_pwgt$oversamp)
+        # which areas have no samples
+        missed <- !settle_agg[!is.na(settle_agg)] %in% as.numeric(names(sample_dist))
+        missed <- settle_agg[!is.na(settle_agg)][missed]
+        # find available to drop (must >1 sample in cell)
+        avail <- as.numeric(names(sample_dist[sample_dist>1]))
+        # drop from sample in available cells a random selection of sites
+        drops <- sample(1:nrow(srs_pwgt[srs_pwgt$oversamp %in% avail,]), size=length(missed), replace=F)
+        srs_pwgt <- srs_pwgt[-drops,]
+        # update with new sample - select 1 per unsampled super cell
+        for(c in missed){
+          # only select within the large super cell
+          newdomain <- domain[domain$oversamp==c,]
+          # draw 1 sample in the area and add to the sample
+          newsample <- sample(1:nrow(newdomain), size=1, 
+                              replace=F, prob=domain[domain$oversamp==c,"pop_wgt"]) # using population weights
+          srs_pwgt <- rbind(srs_pwgt, newdomain[newsample,])
+        }
+        # estimation
+        # model results
+        mbg_pwgt <- mbg(samp=srs_pwgt,
+                       pred=domain,
+                       bound=as(extent(count), "SpatialPolygons"))
+        # extract the predictions for each location 
+        domain$pwgt_over <- mbg_pwgt$predvals
+      }        
       
    #### Process results ####
       # per-pixel error metrics
@@ -401,14 +412,18 @@ err.mape.l <- reshape(err.df.mape,
                     direction="long")
 
 # plot EA-level error metrics
-ggplot(data=err.rmse.l, aes(x=as.factor(sz), y=err, fill=est)) +
+grmse <- ggplot(data=err.rmse.l, aes(x=as.factor(sz), y=err, fill=est)) +
   geom_boxplot() +
   # facet_wrap(~sim, scales="free", ncol=2) +
+  ylab("RMSE") +
+  xlab("Sample size") +
   theme_bw()
 
-ggplot(data=err.mape.l, aes(x=as.factor(sz), y=err, fill=est)) +
+gmape <- ggplot(data=err.mape.l, aes(x=as.factor(sz), y=err, fill=est)) +
   geom_boxplot() +
   # facet_wrap(~sim, scales="free", ncol=2) +
+  ylab("MAPE") +
+  xlab("Sample size") +
   theme_bw()
 
 
@@ -440,21 +455,27 @@ totpop <- unique(pop.df[,c("sim","totpop")])
 totsubpop <- unique(subpop.df[,c("sim","subpop")])
 
 # plot total popuation predictions
-ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
+gtotpop <- ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
   geom_boxplot() +
   # facet_wrap(~sim, scales="free", ncol=2) +
   geom_hline(data=totpop, aes(yintercept=totpop[1], col="red"), show.legend=F) +
+  ggtitle("Estimated total population") +
+  xlab("Sample size") +
   theme_bw()
 
 # plot prediction of subregion population
-ggplot(data=subpop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
+gsubpop <- ggplot(data=subpop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
   geom_boxplot() +
   # facet_wrap(~sim, scales="free", ncol=2) +
   geom_hline(data=totsubpop, aes(yintercept=subpop[1], col="red"), show.legend=F) +
+  ggtitle("Estimated subregion population") +
+  xlab("Sample size") +
   theme_bw()
 
-
-
+## plot combined results
+res <- arrangeGrob(gtotpop, gsubpop, grmse, gmape, ncol=2)
+  plot(res)
+  
 
 # # plot 1D representation of population
 # ggplot(domain, aes(x=cnum, y=counts)) + 
