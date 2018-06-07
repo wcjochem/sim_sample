@@ -46,7 +46,13 @@ mbg <- function(samp=NULL, pred=NULL, bound=NULL, mesh=NULL,
   # index to the mesh
   mesh.index0 <- inla.spde.make.index(name="field", n.spde=matern$n.spde)
   # data stack for SPDE model
-  stack.est <- inla.stack(data=list(l_counts=log(samp$counts)),
+  # stack.est <- inla.stack(data=list(l_counts=log(samp$counts)),
+  #                         A=list(A.est, 1),
+  #                         effects=list( c(mesh.index0, list(Intercept=1)),
+  #                                       list(samp[,c("elev","trend")]) ),
+  #                         tag='est')
+  
+  stack.est <- inla.stack(data=list(l_counts=samp$counts),
                           A=list(A.est, 1),
                           effects=list( c(mesh.index0, list(Intercept=1)),
                                         list(samp[,c("elev","trend")]) ),
@@ -60,8 +66,14 @@ mbg <- function(samp=NULL, pred=NULL, bound=NULL, mesh=NULL,
   # create unified stack with tags
   stack.all <- inla.stack(stack.est, stack.pred)
   # fit model
+  # fit <- inla(form, 
+  #             family="gaussian",
+  #             data=inla.stack.data(stack.all),
+  #             control.predictor=list(A=inla.stack.A(stack.all), compute=T, link=1),
+  #             control.compute=c.c)
+  #
   fit <- inla(form, 
-              family="gaussian",
+              family="nbinomial",
               data=inla.stack.data(stack.all),
               control.predictor=list(A=inla.stack.A(stack.all), compute=T, link=1),
               control.compute=c.c)
@@ -71,7 +83,8 @@ mbg <- function(samp=NULL, pred=NULL, bound=NULL, mesh=NULL,
   idx.pred <- inla.stack.index(stack.all, "pred")$data
   
   # extract fitted values - posterior median of response
-  predvals <- exp(fit$summary.fitted.values[idx.pred, c("0.5quant")])
+  # predvals <- exp(fit$summary.fitted.values[idx.pred, c("0.5quant")])
+  predvals <- fit$summary.fitted.values[idx.pred, c("0.5quant")]
   
   ## return
   return(list("predvals"=predvals, "fittedmod"=fit))
@@ -86,8 +99,15 @@ mbg <- function(samp=NULL, pred=NULL, bound=NULL, mesh=NULL,
   #    ylim=c(0,max(log(pred$counts), predvals)))
   # abline(a=0, b=1, col="red")
   # 
+  # plot(pred$counts, predvals,
+  #      xlim=c(0,max(pred$counts, predvals)),
+  #      ylim=c(0,max(pred$counts, predvals)))
+  # abline(a=0, b=1, col="red")
+  # cor(pred$counts, predvals)^2
+  # 
   # or <- rasterFromXYZ(pred[,c("x","y","counts")], res=c(1,1))
   # pr <- rasterFromXYZ(cbind(pred[,c("x","y")], exp(predvals)), res=c(1,1))
+  # pr <- rasterFromXYZ(cbind(pred[,c("x","y")], predvals), res=c(1,1))
   # 
   # par(mfrow=c(1,2))
   # plot(or); points(samp[,c("x","y")], pch=16)
