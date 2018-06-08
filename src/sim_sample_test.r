@@ -31,15 +31,15 @@ source("./src/model_est.r")
 nsims <- 1 # number of spatial fields to repeat
 regionsize <- 50 # dim of square region
 phi <- 0.05 # smoothness parameter
-ndraws <- 10 # number of repeated samples
+ndraws <- 50 # number of repeated samples
 
 # implement sampling strategies
 # different strategies -- CHANGE HERE
 # list used to automate data storage creation and logic to limit evaluation steps
-strats <- c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_pwgt","pwgt_over")
+strats <- c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_pwgt","mbg_pwgt_ovr")
 # different sample sizes
 # sampsz <- c(50,100,150,200,250,300,350,400) # CHANGE HERE
-sampsz <- c(100,150,200) # CHANGE HERE
+sampsz <- c(50,100,150,200) # CHANGE HERE
 
 # abundance model parameters
 beta0 <- .4 # intercept
@@ -330,8 +330,8 @@ for(i in 1:nsims){ # loop over different simulated populations
       
     ## spatial oversample using population-weighted sample ##
     ## model-based estimates ##
-      if("pwgt_over" %in% strats){
-        if(!"mbg_pwgt" %in% strats){ # in case someone skipped previous method
+      if("mbg_pwgt_ovr" %in% strats){
+        if(!"mbg_pwgt_ovr" %in% strats){ # in case someone skipped previous method
           pwgt_samps <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
           # extract values from sampled points
           srs_pwgt <- domain[pwgt_samps,]
@@ -363,7 +363,7 @@ for(i in 1:nsims){ # loop over different simulated populations
                        pred=domain,
                        bound=as(extent(count), "SpatialPolygons"))
         # extract the predictions for each location 
-        domain$pwgt_over <- mbg_pwgt$predvals
+        domain$mbg_pwgt_ovr <- mbg_pwgt$predvals
       }        
       
    #### Process results ####
@@ -460,6 +460,7 @@ gtotpop <- ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) +
   # facet_wrap(~sim, scales="free", ncol=2) +
   geom_hline(data=totpop, aes(yintercept=totpop[1], col="red"), show.legend=F) +
   ggtitle("Estimated total population") +
+  ylab("Population") +
   xlab("Sample size") +
   theme_bw()
 
@@ -469,12 +470,15 @@ gsubpop <- ggplot(data=subpop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) +
   # facet_wrap(~sim, scales="free", ncol=2) +
   geom_hline(data=totsubpop, aes(yintercept=subpop[1], col="red"), show.legend=F) +
   ggtitle("Estimated subregion population") +
+  ylab("Population") +
   xlab("Sample size") +
   theme_bw()
 
 ## plot combined results
 res <- arrangeGrob(gtotpop, gsubpop, grmse, gmape, ncol=2)
   plot(res)
+  
+
   
 
 # # plot 1D representation of population
