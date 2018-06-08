@@ -21,6 +21,7 @@ library(gstat)
 library(ggplot2)
 library(rasterVis)
 library(gridExtra)
+library(grid)
 library(splitstackshape)
 library(Metrics)
 
@@ -37,6 +38,10 @@ ndraws <- 50 # number of repeated samples
 # different strategies -- CHANGE HERE
 # list used to automate data storage creation and logic to limit evaluation steps
 strats <- c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_pwgt","mbg_pwgt_ovr")
+# clean labels - for plotting
+cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_pwgt","mbg_pwgt_ovr"),
+                         name=c("SRS","MBG-SRS","Strat RS","Area wgt Strata","MBG-PPS","MBG-PPS+Oversample"),
+                         stringsAsFactors=F)
 # different sample sizes
 # sampsz <- c(50,100,150,200,250,300,350,400) # CHANGE HERE
 sampsz <- c(50,100,150,200) # CHANGE HERE
@@ -442,6 +447,8 @@ pop.df.l <- reshape(pop.df,
                     timevar="est",
                     times=strats,
                     direction="long")
+# add clean labels
+pop.df.l$Method <- cleanlabel[match(pop.df.l$est, cleanlabel$strat),"name"]
 
 subpop.df.l <- reshape(subpop.df,
                     varying=paste0(strats, "_d"),
@@ -455,7 +462,7 @@ totpop <- unique(pop.df[,c("sim","totpop")])
 totsubpop <- unique(subpop.df[,c("sim","subpop")])
 
 # plot total popuation predictions
-gtotpop <- ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
+gtotpop <- ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=Method)) + 
   geom_boxplot() +
   # facet_wrap(~sim, scales="free", ncol=2) +
   geom_hline(data=totpop, aes(yintercept=totpop[1], col="red"), show.legend=F) +
@@ -475,11 +482,37 @@ gsubpop <- ggplot(data=subpop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) +
   theme_bw()
 
 ## plot combined results
-res <- arrangeGrob(gtotpop, gsubpop, grmse, gmape, ncol=2)
-  plot(res)
+# res <- arrangeGrob(gtotpop, gsubpop, grmse, gmape, ncol=2)
+  # plot(res)
   
+####
+# https://github.com/tidyverse/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs  
+grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, position = c("bottom", "right")) {
+  plots <- list(...)
+  position <- match.arg(position)
+  g <- ggplotGrob(plots[[1]] + theme(legend.position = position))$grobs
+  legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+  lheight <- sum(legend$height)
+  lwidth <- sum(legend$width)
+  gl <- lapply(plots, function(x) x + theme(legend.position="none"))
+  gl <- c(gl, ncol = ncol, nrow = nrow)
 
-  
+  combined <- switch(position,
+                     "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
+                                            legend,
+                                            ncol = 1,
+                                            heights = unit.c(unit(1, "npc") - lheight, lheight)),
+                     "right" = arrangeGrob(do.call(arrangeGrob, gl),
+                                           legend,
+                                           ncol = 2,
+                                           widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
+  grid.newpage()
+  grid.draw(combined)
+  # return gtable invisibly
+  invisible(combined)
+}  
+
+grid_arrange_shared_legend(gtotpop, gsubpop, grmse, gmape, ncol=2, nrow=2)
 
 # # plot 1D representation of population
 # ggplot(domain, aes(x=cnum, y=counts)) + 
