@@ -389,6 +389,8 @@ for(i in 1:nsims){ # loop over different simulated populations
     }
   }
 }
+print(Sys.time())
+
 # add the labels to matrix of results
 pred_errs <- cbind(reslabels, pred_errs)
 pred_pop <- cbind(reslabels, pred_pop)
@@ -514,26 +516,4 @@ grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, 
 
 grid_arrange_shared_legend(gtotpop, gsubpop, grmse, gmape, ncol=2, nrow=2)
 
-# # plot 1D representation of population
-# ggplot(domain, aes(x=cnum, y=counts)) + 
-#   geom_line() + 
-#   geom_smooth(method="loess", se=F, span=.09) +
-#   theme_bw()
-# 
-# # compare sample selection locations
-# df <- srs_locn[[9]] # example
-# 
-# ggplot(data=df, aes(x=cnum, y=counts)) + 
-#   geom_line(colour="grey") + 
-#   geom_smooth(method="loess", se=F, span=0.09) + 
-#   geom_hline(aes(yintercept=mean(counts), col="red"), show.legend=F) +
-#   geom_rug(aes(x=cnum, alpha=sz_50), sides="b") +
-#   # geom_smooth(aes(x=cnum, y=sz_50*100), method="loess", span=0.05) +
-#   theme_bw()
-# 
-# ggplot(data=df, aes(x=cnum, y=sz_50)) + 
-#   geom_line(colour="grey") + 
-#   geom_smooth(method="loess", se=F, span=0.05) + 
-#   # geom_hline(aes(yintercept=mean(counts), col="red"), show.legend=F) +
-#   # geom_rug(aes(x=cnum, alpha=sz_25)) +
-#   theme_bw()
+# End
