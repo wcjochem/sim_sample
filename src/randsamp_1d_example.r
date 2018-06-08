@@ -122,15 +122,15 @@ gplots <- lapply(1:length(reslist), function(j){
   samp_mean_var$newid <- rep(1:nsamples, times=length(szs))
   # plot
   p4 <- ggplot(samp_mean_var, aes(x=newid, y=samp_mean, col=as.factor(samp_sz))) +
+    geom_linerange(aes(ymin=lower, ymax=upper), col="black", alpha=0.1, show.legend=F) +
     geom_point(show.legend=F) +
-    geom_linerange(aes(ymin=lower, ymax=upper), show.legend=F) +
     facet_wrap(~ as.factor(samp_sz), scales="free") +
     geom_hline(aes(yintercept=y_bar, group=as.factor(samp_sz)), col="blue", size=1) +
     theme_bw()
 
   # grid.arrange(p1, p2)
   # plot(arrangeGrob(p1, p2, ncol=2))
-  arrangeGrob(p1, p2, p3, ncol=4)
+  arrangeGrob(p1, p2, p3, ncol=3)
 })
 
 # plot the list together
