@@ -130,7 +130,7 @@ gplots <- lapply(1:length(reslist), function(j){
 
   # grid.arrange(p1, p2)
   # plot(arrangeGrob(p1, p2, ncol=2))
-  arrangeGrob(p1, p2, p3, ncol=3)
+  arrangeGrob(p1, p2, p3, ncol=4)
 })
 
 # plot the list together
