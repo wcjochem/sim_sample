@@ -44,7 +44,7 @@ cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_p
                          stringsAsFactors=F)
 # different sample sizes
 # sampsz <- c(50,100,150,200,250,300,350,400) # CHANGE HERE
-sampsz <- c(50,100,150,200,250,300) # CHANGE HERE
+sampsz <- c(50,100,150,200) # CHANGE HERE
 
 # abundance model parameters
 beta0 <- .4 # intercept
@@ -354,6 +354,27 @@ for(i in 1:nsims){ # loop over different simulated populations
         # sum(wgt * strs_mean$mean)
         # apply mean to settled area domain by stratum
         domain$pr_areawt <- strs_mean[domain$simp_strat, "mean"]        
+      }
+      
+   ## systematic random sample - using oversample spaces as strata ##
+      if("mbg_sys" %in% strats){
+        # sample size - not rounding may cause some different totals
+        szs <- round(sz / length(unique(domain$oversamp)))
+        # random sample within systematic strata
+        sys <- data.frame(stratified(domain, "oversamp", szs))
+        # check sizes and make up for dropped sampled
+        # caused by rounding and by some domain areas having too few cells
+        miss <- sz - nrow(sys)
+        if(miss > 0){#
+          avail <- domain[!domain$cnum %in% sys$cnum,] # available locns
+          extra_samp <- sample(1:nrow(avail), size=miss, replace=F)
+          # add to main sample
+          sys <- rbind(sys, avail[extra_samp,])
+        }
+        # model results
+        mbg_sys <- mbg(samp=sys,
+                       pred=domain,
+                       bound=as(extent(count), "SpatialPolygons"))
       }
       
    ## sample weighted by approximate population density -- test preferential sampling corrections
