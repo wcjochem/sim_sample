@@ -234,10 +234,6 @@ for(i in 1:nsims){ # loop over different simulated populations
   # create a high pop sub-domain area to estimate totals
   # analogous to having a capital city within a regional sampling domain
   hicell <- cellFromXY(count, domain[which.max(domain$counts),c("x","y")])
-  # can't find hicell (homogenous pop)
-  if(length(hicell)==0){
-    hicell <- cellFromXY(count, domain[,c("x","y")])
-  }
   row <- rowFromCell(count, hicell) # get row/column of the high population area
   col <- colFromCell(count, hicell)
 
