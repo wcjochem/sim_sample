@@ -37,14 +37,14 @@ ndraws <- 50 # number of repeated samples
 # implement sampling strategies
 # different strategies -- CHANGE HERE
 # list used to automate data storage creation and logic to limit evaluation steps
-strats <- c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_pwgt","mbg_pwgt_ovr")
+strats <- c("pr_srs","mbg_srs","mbg_pwgt","mbg_pwgt_ovr") # removed: "pr_strs","pr_areawt"
 # clean labels - for plotting
 cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_pwgt","mbg_pwgt_ovr"),
                          name=c("SRS","MBG-SRS","Strat RS","Area wgt Strata","MBG-PPS","MBG-PPS+Oversample"),
                          stringsAsFactors=F)
 # different sample sizes
 # sampsz <- c(50,100,150,200,250,300,350,400) # CHANGE HERE
-sampsz <- c(50,100,150,200) # CHANGE HERE
+sampsz <- c(50,100,150,200,250,300) # CHANGE HERE
 
 # abundance model parameters
 beta0 <- .4 # intercept
@@ -115,6 +115,48 @@ for(i in 1:nsims){
   # store the simulations
   countfields[[i]] <- counts
 }
+
+# # simulate spatial field from INLA matern
+# set.seed(i)
+# sig.u <- .2 # marginal SD of spatial field
+# range <- 10 # nominal range of spatial field
+# # make mesh
+# mesh.sim <- inla.mesh.2d(boundary=as(extent(elev), "SpatialPolygons"), max.edge=c(1,2), offset=c(5,10))
+# spde = inla.spde2.pcmatern(mesh.sim, prior.range = c(15, .5), prior.sigma = c(10, .5))
+# # precision matrix
+# Qu <- inla.spde.precision(spde, theta=c(log(range), log(sig.u)))
+# u <- inla.qsample(n=1, Q=Qu)
+# # spatial field
+# u <- u[ ,1]
+# # project to locations
+# spfield <- inla.mesh.project(mesh=mesh.sim, loc=coordinates(elev), field=u)
+# spf <- rasterFromXYZ(cbind(simgrid[, 1:2] - 0.5, spfield))
+#   plot(spf)
+
+## add additional simulated surfaces ##
+# homongenous 
+homog_pop <- raster(elev) # align with layers
+values(homog_pop) <- 4 #
+
+# purely random
+rand_pop <- raster(elev) # align with layers
+values(rand_pop) <- rnorm(ncell(rand_pop), mean=5, sd=.5)
+
+# purely covariate
+lambda <- exp(beta0 + beta1*values(elev) + beta2*values(elev)^2 + beta3*values(trend)) # same generating function
+# generate counts from the simulated intensity
+counts <- rpois(n, lambda)
+    sum(counts)
+# gridded abundance counts
+cov_pop <- rasterFromXYZ(cbind(coordinates(elev), counts))
+  # plot(cov_pop)
+# combine with list of spatial field simulations
+addfields <- list(homog_pop, rand_pop, cov_pop)
+countfields <- c(addfields, countfields)
+# update the number of simulations
+nsims <- length(countfields)
+
+
 # can save/output the list of simulated fields for replication study
 
 # visualise the results
