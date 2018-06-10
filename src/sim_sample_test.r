@@ -135,12 +135,12 @@ for(i in 1:nsims){
 
 ## add additional simulated surfaces ##
 # homongenous 
-homog_pop <- raster(elev) # align with layers
-values(homog_pop) <- 4 #
+counts <- 4
+homog_pop <-rasterFromXYZ(cbind(coordinates(elev), counts))
 
 # purely random
-rand_pop <- raster(elev) # align with layers
-values(rand_pop) <- rnorm(ncell(rand_pop), mean=5, sd=.5)
+counts <- rnorm(ncell(rand_pop), mean=5, sd=.5) # random values
+rand_pop <- rasterFromXYZ(cbind(coordinates(elev), counts))
 
 # purely covariate
 lambda <- exp(beta0 + beta1*values(elev) + beta2*values(elev)^2 + beta3*values(trend)) # same generating function
@@ -171,7 +171,7 @@ count_plots <- lapply(1:nsims, function(x){
 })
   # count_plots
 # arrange all plots
-marrangeGrob(count_plots, nrow=1, ncol=3)
+marrangeGrob(count_plots, nrow=2, ncol=2)
 
 
 ##
@@ -234,6 +234,10 @@ for(i in 1:nsims){ # loop over different simulated populations
   # create a high pop sub-domain area to estimate totals
   # analogous to having a capital city within a regional sampling domain
   hicell <- cellFromXY(count, domain[which.max(domain$counts),c("x","y")])
+  # can't find hicell (homogenous pop)
+  if(length(hicell)==0){
+    hicell <- cellFromXY(count, domain[,c("x","y")])
+  }
   row <- rowFromCell(count, hicell) # get row/column of the high population area
   col <- colFromCell(count, hicell)
 
