@@ -37,10 +37,10 @@ ndraws <- 50 # number of repeated samples
 # implement sampling strategies
 # different strategies -- CHANGE HERE
 # list used to automate data storage creation and logic to limit evaluation steps
-strats <- c("pr_srs","mbg_srs","mbg_pwgt","mbg_pwgt_ovr") # removed: "pr_strs","pr_areawt"
+strats <- c("pr_srs","mbg_srs","mbg_sys","mbg_pwgt","mbg_pwgt_ovr") # removed: "pr_strs","pr_areawt"
 # clean labels - for plotting
-cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_pwgt","mbg_pwgt_ovr"),
-                         name=c("SRS","MBG-SRS","Strat RS","Area wgt Strata","MBG-PPS","MBG-PPS+Oversample"),
+cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_sys","mbg_pwgt","mbg_pwgt_ovr"),
+                         name=c("SRS","MBG-SRS","Strat RS","Area wgt Strata","MBG-SYS","MBG-PPS","MBG-PPS+Oversample"),
                          stringsAsFactors=F)
 # different sample sizes
 # sampsz <- c(50,100,150,200,250,300,350,400) # CHANGE HERE
