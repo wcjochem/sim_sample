@@ -32,7 +32,7 @@ source("./src/model_est.r")
 nsims <- 1 # number of spatial fields to repeat
 regionsize <- 50 # dim of square region
 phi <- 0.05 # smoothness parameter
-ndraws <- 50 # number of repeated samples
+ndraws <- 10 # number of repeated samples
 
 # implement sampling strategies
 # different strategies -- CHANGE HERE
@@ -139,14 +139,14 @@ counts <- 4
 homog_pop <-rasterFromXYZ(cbind(coordinates(elev), counts))
 
 # purely random
-counts <- rnorm(ncell(rand_pop), mean=5, sd=.5) # random values
+counts <- rnorm(ncell(elev), mean=5, sd=.5) # random values
 rand_pop <- rasterFromXYZ(cbind(coordinates(elev), counts))
 
 # purely covariate
 lambda <- exp(beta0 + beta1*values(elev) + beta2*values(elev)^2 + beta3*values(trend)) # same generating function
 # generate counts from the simulated intensity
 counts <- rpois(n, lambda)
-    sum(counts)
+    # sum(counts)
 # gridded abundance counts
 cov_pop <- rasterFromXYZ(cbind(coordinates(elev), counts))
   # plot(cov_pop)
@@ -193,6 +193,7 @@ sim_mesh <- makemesh(bound=as(extent(elev), "SpatialPolygons"))
 
 # Loop and evaluate 
 r <- 1 # counter to fill in the output
+print(Sys.time())
 for(i in 1:nsims){ # loop over different simulated populations
   print(i)
   
@@ -407,7 +408,7 @@ for(i in 1:nsims){ # loop over different simulated populations
     ## spatial oversample using population-weighted sample ##
     ## model-based estimates ##
       if("mbg_pwgt_ovr" %in% strats){
-        if(!"mbg_pwgt_ovr" %in% strats){ # in case someone skipped previous method
+        if(!"mbg_pwgt" %in% strats){ # in case someone skipped previous method
           pwgt_samps <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
           # extract values from sampled points
           srs_pwgt <- domain[pwgt_samps,]
