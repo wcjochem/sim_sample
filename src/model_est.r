@@ -89,6 +89,7 @@ mbg <- function(samp=NULL, pred=NULL, bound=NULL, mesh=NULL,
   ## return
   return(list("predvals"=predvals, "fittedmod"=fit))
   
+  #####
   # plot(pred$counts, exp(predvals),
   #      xlim=c(0,max(pred$counts, exp(predvals))),
   #      ylim=c(0,max(pred$counts, exp(predvals))))
@@ -144,5 +145,3 @@ mbg <- function(samp=NULL, pred=NULL, bound=NULL, mesh=NULL,
   # hist(p.tot); summary(p.tot)
 }
 
-# fit$formula <- form
-# pi <- inlabru:::predict.inla(fit, pred, ~ -1 + Intercept + elev + trend)
