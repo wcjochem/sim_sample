@@ -187,6 +187,9 @@ pred_pop <- matrix(NA, nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2)
 # storage to record sample locations from SRS
 srs_locn <- vector("list", length=nsims)
 
+# make mesh for spatial models
+sim_mesh <- makemesh(bound=as(extent(elev), "SpatialPolygons"))
+  # plot(sim_mesh)
 
 # Loop and evaluate 
 r <- 1 # counter to fill in the output
@@ -322,7 +325,8 @@ for(i in 1:nsims){ # loop over different simulated populations
       if("mbg_srs" %in% strats){
         mbg_srs <- mbg(samp=srs,
                        pred=domain,
-                       bound=as(extent(count), "SpatialPolygons"))
+                       bound=as(extent(count), "SpatialPolygons"),
+                       mesh=sim_mesh)
         # extract the predictions for each location 
         domain$mbg_srs <- mbg_srs$predvals
       }
@@ -374,7 +378,10 @@ for(i in 1:nsims){ # loop over different simulated populations
         # model results
         mbg_sys <- mbg(samp=sys,
                        pred=domain,
-                       bound=as(extent(count), "SpatialPolygons"))
+                       bound=as(extent(count), "SpatialPolygons"),
+                       mesh=sim_mesh)
+        # extract predictions
+        domain$mbg_sys <- mbg_sys$predvals
       }
       
    ## sample weighted by approximate population density -- test preferential sampling corrections
@@ -391,7 +398,8 @@ for(i in 1:nsims){ # loop over different simulated populations
         # model results
         mbg_pwgt <- mbg(samp=srs_pwgt,
                        pred=domain,
-                       bound=as(extent(count), "SpatialPolygons"))
+                       bound=as(extent(count), "SpatialPolygons"),
+                       mesh=sim_mesh)
         # extract the predictions for each location 
         domain$mbg_pwgt <- mbg_pwgt$predvals
       }  
@@ -429,7 +437,8 @@ for(i in 1:nsims){ # loop over different simulated populations
         # model results
         mbg_pwgt <- mbg(samp=srs_pwgt,
                        pred=domain,
-                       bound=as(extent(count), "SpatialPolygons"))
+                       bound=as(extent(count), "SpatialPolygons"),
+                       mesh=sim_mesh)
         # extract the predictions for each location 
         domain$mbg_pwgt_ovr <- mbg_pwgt$predvals
       }        
