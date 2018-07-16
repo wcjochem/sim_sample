@@ -8,6 +8,8 @@
 
 # require(inlabru) 
 require(INLA)
+require(gbm)
+require(dismo)
 
 ## simplified Bayesian geostatistcal model ##
 # make a mesh for SPDE model
@@ -23,6 +25,7 @@ makemesh <- function(locn=NULL, bound=NULL, me=c(1,2), co=1, off=c(5,10)){
 
 
 # general function for models
+# model-based geostatistical function
 mbg <- function(samp=NULL, pred=NULL, bound=NULL, mesh=NULL,
                 meshconfig=list(me=c(1,2), co=1, off=c(5,10)) ){
   
@@ -145,3 +148,34 @@ mbg <- function(samp=NULL, pred=NULL, bound=NULL, mesh=NULL,
   # hist(p.tot); summary(p.tot)
 }
 
+# boosted regression tree
+brt <- function(samp=NULL, pred=NULL){
+  # log transform outcome
+  samp$l_counts <- log(samp$counts)
+  # 
+  # fit <- gbm.step(data=samp,
+  #                 gbm.x=c("elev","trend","x","y"),
+  #                 gbm.y="l_counts",
+  #                 family="gaussian",
+  #                 tree.complexity=4,
+  #                 learning.rate=0.001,
+  #                 bag.fraction=0.5)
+  
+  # fit model on sample
+  fit <- gbm(l_counts ~ elev + trend + x + y,
+             distribution="gaussian",
+             data=samp,
+             n.trees=2000,
+             interaction.depth=4,
+             shrinkage=0.001,
+             bag.fraction=0.5)
+  # make predictions into the full domain
+  predvals <- predict.gbm(fit,
+                          newdata=domain,
+                          n.trees=2000,
+                          type="link")
+  predvals <- exp(predvals) # back-transform to counts
+  # plot(domain$counts, predvals)
+  
+  return(list("predvals"=predvals, "fittedmod"=fit))
+}
