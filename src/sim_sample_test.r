@@ -487,23 +487,23 @@ pred_errs <- cbind(reslabels, pred_errs)
 pred_pop <- cbind(reslabels, pred_pop)
 
 ####
-# process cluster output
-reslist <- readRDS("C:/Users/wcj1n15.SOTON/Dropbox/Soton/proj/Nigeria/density_all/sim/reslist.rds")
-  length(reslist)
-# list of lists: i, reslabels, pred_errs, pred_pop
-errs <- vector("list", length=length(reslist))
-preds <- vector("list", length=length(reslist))
-#
-for(i in 1:length(reslist)){
-  l <- reslist[[i]]
-  n <- l[[1]]
-  labs <- cbind(n, l[[2]])
-  errs[[i]] <- cbind(labs, l[[3]])
-  preds[[i]] <- cbind(labs, l[[4]])
-}
-
-pred_errs <- do.call(rbind, errs)
-pred_pop <- do.call(rbind, preds)
+# # process cluster output
+# reslist <- readRDS("C:/Users/wcj1n15.SOTON/Dropbox/Soton/proj/Nigeria/density_all/sim/reslist.rds")
+#   length(reslist)
+# # list of lists: i, reslabels, pred_errs, pred_pop
+# errs <- vector("list", length=length(reslist))
+# preds <- vector("list", length=length(reslist))
+# #
+# for(i in 1:length(reslist)){
+#   l <- reslist[[i]]
+#   n <- l[[1]]
+#   labs <- cbind(n, l[[2]])
+#   errs[[i]] <- cbind(labs, l[[3]])
+#   preds[[i]] <- cbind(labs, l[[4]])
+# }
+# 
+# pred_errs <- do.call(rbind, errs)
+# pred_pop <- do.call(rbind, preds)
 
 ####
 
@@ -561,10 +561,12 @@ gmape <- gmape + coord_cartesian(ylim = ylim1*1.1)
 
 # convert population to dataframe for ggplot
 pop.df <- data.frame(pred_pop)
-names(pop.df) <- c("sim","sz","pct_samp","totpop","subpop", strats, paste0(strats, "_d"))
+names(pop.df) <- c("sim","sz","pct_samp","totpop","hisubpop","losubpop", strats, paste0(strats, "_hi"), paste0(strats, "_lo"))
 # subdomain data frame
-subpop.df <- pop.df[,c("sim","sz","pct_samp","subpop", paste0(strats, "_d"))]
-pop.df <- pop.df[,!names(pop.df) %in% paste0(strats, "_d")]
+hisubpop.df <- pop.df[,c("sim","sz","pct_samp","hisubpop", paste0(strats, "_hi"))]
+losubpop.df <- pop.df[,c("sim","sz","pct_samp","losubpop", paste0(strats, "_lo"))]
+
+pop.df <- pop.df[,!names(pop.df) %in% c(paste0(strats, "_hi"), paste0(strats, "_lo"))]
 
 # pop records convert to long format
 pop.df.l <- reshape(pop.df,
@@ -575,17 +577,25 @@ pop.df.l <- reshape(pop.df,
                     direction="long")
 # add clean labels
 pop.df.l$Method <- cleanlabel[match(pop.df.l$est, cleanlabel$strat),"name"]
+# long-format for subpop data frames - for plotting
+hisubpop.df.l <- reshape(hisubpop.df,
+                         varying=paste0(strats, "_hi"),
+                         v.names="pop",
+                         timevar="est",
+                         times=strats,
+                         direction="long")
 
-subpop.df.l <- reshape(subpop.df,
-                    varying=paste0(strats, "_d"),
-                    v.names="pop",
-                    timevar="est",
-                    times=strats,
-                    direction="long")
+losubpop.df.l <- reshape(losubpop.df,
+                         varying=paste0(strats, "_lo"),
+                         v.names="pop",
+                         timevar="est",
+                         times=strats,
+                         direction="long")
 
 # find simulation-specific total population
 totpop <- unique(pop.df[,c("sim","totpop")])
-totsubpop <- unique(subpop.df[,c("sim","subpop")])
+totsubpop_hi <- unique(hisubpop.df[,c("sim","hisubpop")])
+totsubpop_lo <- unique(losubpop.df[,c("sim","losubpop")])
 
 pop.df.l <- pop.df.l[!is.na(pop.df.l$pop) & !is.infinite(pop.df.l$pop),]
 pop.df.l <- subset(pop.df.l, pop < totpop*3)
@@ -600,14 +610,27 @@ gtotpop <- ggplot(data=pop.df.l, aes(x=as.factor(sz), y=pop, fill=Method)) +
   xlab("Sample size") +
   theme_bw()
 
-subpop.df.l <- subpop.df.l[!is.na(subpop.df.l$pop) & !is.infinite(subpop.df.l$pop),]
-subpop.df.l <- subset(subpop.df.l, pop < subpop*3)
+# sub regions
+hisubpop.df.l <- hisubpop.df.l[!is.na(hisubpop.df.l$pop) & !is.infinite(hisubpop.df.l$pop),]
+hisubpop.df.l <- subset(hisubpop.df.l, pop < hisubpop*3)
+
+losubpop.df.l <- losubpop.df.l[!is.na(losubpop.df.l$pop) & !is.infinite(losubpop.df.l$pop),]
+hisubpop.df.l <- subset(losubpop.df.l, pop < losubpop*3)
 
 # plot prediction of subregion population
-gsubpop <- ggplot(data=subpop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
+ghisubpop <- ggplot(data=hisubpop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
   geom_boxplot() +
   facet_wrap(~sim, scales="free", nrow=3) +
-  geom_hline(data=totsubpop, aes(yintercept=subpop, col="red"), show.legend=F) +
+  geom_hline(data=totsubpop_hi, aes(yintercept=hisubpop, col="red"), show.legend=F) +
+  ggtitle("Estimated subregion population") +
+  ylab("Population") +
+  xlab("Sample size") +
+  theme_bw()
+
+glosubpop <- ggplot(data=losubpop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) + 
+  geom_boxplot() +
+  facet_wrap(~sim, scales="free", nrow=3) +
+  geom_hline(data=totsubpop_lo, aes(yintercept=losubpop, col="red"), show.legend=F) +
   ggtitle("Estimated subregion population") +
   ylab("Population") +
   xlab("Sample size") +
@@ -645,7 +668,7 @@ grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, 
 }  
 
 # grid_arrange_shared_legend(gtotpop, gsubpop, grmse, gmape, ncol=4, nrow=1)
-grid_arrange_shared_legend(gtotpop, gsubpop, ncol=2, nrow=1)
+grid_arrange_shared_legend(gtotpop, ghisubpop, glosubpop, ncol=3, nrow=1)
 grid_arrange_shared_legend(grmse, gmape, ncol=2, nrow=1)
 
 # End
