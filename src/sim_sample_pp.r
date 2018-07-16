@@ -18,10 +18,6 @@
 
 library(raster)
 library(gstat)
-# library(ggplot2)
-# library(rasterVis)
-# library(gridExtra)
-# library(grid)
 library(splitstackshape)
 library(Metrics)
 library(parallel)
@@ -31,6 +27,41 @@ dir <- "/home/wcj1n15/sim_sample"
 ## load code to produce model-based estimates ##
 source(paste0(dir,"/model_est.r"))
 INLA:::inla.dynload.workaround()
+
+# Function to draw samples from a multivariate normal distribution
+rmvn <- function(n, mu = 0, V = matrix(1)) {
+  p <- length(mu)
+  if (any(is.na(match(dim(V), p)))) 
+    stop("Dimension problem!")
+  D <- chol(V)
+  t(matrix(rnorm(n * p), ncol = p) %*% D + rep(mu, rep(n, p)))
+}
+
+# Function to get a small extent sub-region
+make_subregion <- function(r, c, csz, regionsize){ # get the size in number of cells for region
+  rcols <- lcols <- trows <- brows <- csz # default square sub-region
+  # logic checks to prevent subdomain extending beyond border
+  if(c+csz > regionsize){
+    rcols <- regionsize - c
+    lcols <- lcols + (csz - rcols)
+  }
+  if(c-csz <= 0){
+    lcols <- c - 1
+    rcols <- csz + (csz-lcols)
+  }
+  # repeat checks for rows
+  if(r+csz > regionsize){
+    brows <- regionsize - r
+    trows <- csz + (csz - brows)
+  }
+  if(r-csz <= 0){
+    trows <- r - 1
+    brows <- csz + (csz - trows)
+  }
+  # create sub-region extent
+  return(extent(count, r-trows, r+brows, c-lcols, c+rcols))
+}
+
 
 # simulation parameters
 # nsims <- 4 # number of spatial fields to repeat
