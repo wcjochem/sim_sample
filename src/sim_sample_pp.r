@@ -150,44 +150,9 @@ for(i in 1:length(phi)){
   countfields[[i]] <- counts
 }
 
-# purely random
-counts <- rnorm(ncell(elev), mean=5, sd=.5) # random values
-rand_pop <- rasterFromXYZ(cbind(coordinates(elev), counts))
-
-# purely covariate
-lambda <- exp(beta0 + beta1*values(elev) + beta2*values(elev)^2 + beta3*values(trend)) # same generating function
-# generate counts from the simulated intensity
-counts <- rpois(n, lambda)
-    # sum(counts)
-# gridded abundance counts
-cov_pop <- rasterFromXYZ(cbind(coordinates(elev), counts))
-  # plot(cov_pop)
-# combine with list of spatial field simulations
-addfields <- cov_pop
-# countfields <- c(addfields, countfields)
-# update the number of simulations
-nsims <- length(countfields)
-
-
 # can save/output the list of simulated fields for replication study
 
-# visualise the results
-#   plot(countfields[[1]]) # first example
-# create list of all counts
-# count_plots <- lapply(1:nsims, function(x){
-#   gplot(countfields[[x]]) +
-#     geom_tile(aes(fill= value)) + 
-#     scale_fill_gradient(low="white", high="red") + 
-#     theme_bw() +
-#     coord_equal()
-# })
-  # count_plots
-# arrange all plots
-# marrangeGrob(count_plots, nrow=2, ncol=2)
-
-
 ##
-# preallocate storage for the output
 # make mesh for spatial models
 sim_mesh <- makemesh(bound=as(extent(elev), "SpatialPolygons"))
   # plot(sim_mesh)
