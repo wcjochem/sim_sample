@@ -237,7 +237,7 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
   stopifnot(regionsize >= 2*csz + 1) # double-check no small regions
   # create sub-region
   subreg <- make_subregion(row, col, csz, regionsize)
-    plot(count); plot(subreg, add=T); points(domain[which.max(domain$counts),c("x","y")]) # example plot
+    # plot(count); plot(subreg, add=T); points(domain[which.max(domain$counts),c("x","y")]) # example plot
   # identify sub-region within the domain
   subcells <- cellsFromExtent(count, subreg) # find the cell numbers (matches domain and settle and count)
   domain[domain$cnum %in% subcells, "hidomain"] <- 1 # cell is within the extent of sub-region
