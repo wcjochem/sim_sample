@@ -92,6 +92,7 @@ cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt",
 # different sample sizes
 # sampsz <- c(50,100,150,200,250,300,350,400) # CHANGE HERE
 sampsz <- c(50,100,150,200) # CHANGE HERE
+sampsz <- c(100)
 
 # abundance model parameters
 beta0 <- .4 # intercept
@@ -287,7 +288,7 @@ for(i in 1:nsims){ # loop over different simulated populations
   stopifnot(regionsize >= 2*csz + 1) # double-check no small regions
   # create sub-region
   subreg <- make_subregion(row, col, csz, regionsize)
-    plot(count); plot(subreg, add=T); points(domain[which.min(domain$counts),c("x","y")]) # example plot
+    # plot(count); plot(subreg, add=T); points(domain[which.min(domain$counts),c("x","y")]) # example plot
   # identify sub-region within the domain
   subcells <- cellsFromExtent(count, subreg) # find the cell numbers (matches domain and settle and count)
   domain[domain$cnum %in% subcells, "lodomain"] <- 1 # cell is within the extent of sub-region
