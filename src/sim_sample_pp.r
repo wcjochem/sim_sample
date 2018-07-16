@@ -467,7 +467,8 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
       for(s in strats){ # each estimation technique
         idx <- which(strats==s)
         pred_pop[r, idx] <- sum(domain[[s]]) # total population
-        pred_pop[r, idx+length(strats)] <- sum(domain[domain$subdomain==1, s]) # small area
+        pred_pop[r, idx+length(strats)] <- sum(domain[domain$hidomain==1, s]) # small area
+		    pred_pop[r, idx+(2*length(strats))] <- sum(domain[domain$lodomain==1, s])
       }
 
       r <- r+1
