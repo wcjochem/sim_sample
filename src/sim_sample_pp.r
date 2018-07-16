@@ -186,11 +186,11 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
   # storage
   # labels of repetitions, sample size, and observed values
   reslabels <- matrix(data=cbind(rep(sampsz, each=ndraws), NA, NA, NA), 
-                      nrow=length(sampsz)*ndraws, ncol=4)
+                      nrow=length(sampsz)*ndraws, ncol=5)
   # storage for per pixel errors
   pred_errs <- matrix(NA, nrow=length(sampsz)*ndraws, ncol=length(strats)*2)
   # storage for total/sub population comparison
-  pred_pop <- matrix(NA, nrow=length(sampsz)*ndraws, ncol=length(strats)*2)
+  pred_pop <- matrix(NA, nrow=length(sampsz)*ndraws, ncol=length(strats)*3)
 
   count <- countfields[[i]] # simulated pop
   # total "true" population
