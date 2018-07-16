@@ -235,34 +235,32 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
 
   csz <- 4 # set sub-area size (square: csz+1 x csz+1 cells)
   stopifnot(regionsize >= 2*csz + 1) # double-check no small regions
-  rcols <- lcols <- trows <- brows <- csz # default square sub-region
-  # logic checks to prevent subdomain extending beyond border
-  if(col+csz > regionsize){
-    rcols <- regionsize - col
-    lcols <- lcols + (csz - rcols)
-  }
-  if(col-csz <= 0){
-    lcols <- col - 1
-    rcols <- csz + (csz-lcols)
-  }
-  # repeat checks for rows
-  if(row+csz > regionsize){
-    brows <- regionsize - row
-    trows <- csz + (csz - brows)
-  }
-  if(row-csz <= 0){
-    trows <- row - 1
-    brows <- csz + (csz - trows)
-  }
-  # create sub-region extent
-  subreg <- extent(count, row-trows, row+brows, col-lcols, col+rcols)
-    # plot(count); plot(subreg, add=T); points(domain[which.max(domain$counts),c("x","y")]) # example plot
+  # create sub-region
+  subreg <- make_subregion(row, col, csz, regionsize)
+    plot(count); plot(subreg, add=T); points(domain[which.max(domain$counts),c("x","y")]) # example plot
   # identify sub-region within the domain
   subcells <- cellsFromExtent(count, subreg) # find the cell numbers (matches domain and settle and count)
-  domain[domain$cnum %in% subcells, "subdomain"] <- 1 # cell is within the extent of sub-region
-  domain[is.na(domain$subdomain), "subdomain"] <- 0 # reclass NA for quick subsetting
+  domain[domain$cnum %in% subcells, "hidomain"] <- 1 # cell is within the extent of sub-region
+  domain[is.na(domain$hidomain), "hidomain"] <- 0 # reclass NA for quick subsetting
   # total "true" population in sub-region
-  subpop <- sum(domain[domain$subdomain==1, "counts"])
+  hisubpop <- sum(domain[domain$hidomain==1, "counts"])
+  
+  # create a low pop sub-domain area to estimate totals
+  locell <- cellFromXY(count, domain[which.min(domain$counts),c("x","y")])
+  row <- rowFromCell(count, locell) # get row/column of the high population area
+  col <- colFromCell(count, locell)
+  
+  csz <- 4 # set sub-area size (square: csz+1 x csz+1 cells)
+  stopifnot(regionsize >= 2*csz + 1) # double-check no small regions
+  # create sub-region
+  subreg <- make_subregion(row, col, csz, regionsize)
+    # plot(count); plot(subreg, add=T); points(domain[which.min(domain$counts),c("x","y")]) # example plot
+  # identify sub-region within the domain
+  subcells <- cellsFromExtent(count, subreg) # find the cell numbers (matches domain and settle and count)
+  domain[domain$cnum %in% subcells, "lodomain"] <- 1 # cell is within the extent of sub-region
+  domain[is.na(domain$lodomain), "lodomain"] <- 0 # reclass NA for quick subsetting
+  # total "true" population in sub-region
+  losubpop <- sum(domain[domain$lodomain==1, "counts"])
   
   ## stratify the settled area - multiple methods
   # make 5 horizontal strata (naive stratification for comparison)
