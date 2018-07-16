@@ -172,7 +172,8 @@ clusterEvalQ(cl, source("/home/wcj1n15/sim_sample/model_est.r"))
 clusterEvalQ(cl, INLA:::inla.dynload.workaround())
 
 
-clusterExport(cl, varlist=c("dir","sim_mesh","countfields","elev","trend","regionsize","strats","sampsz","ndraws"))
+clusterExport(cl, varlist=c("dir","sim_mesh","countfields","elev","trend","regionsize","samps","strats","sampsz","ndraws"))
+clusterExport(cl, varlist=c("make_subregion")) # export functions
 # establish node ID
 # clusterApply(cl, seq_along(cl), function(x) workerID <<- x)
 
