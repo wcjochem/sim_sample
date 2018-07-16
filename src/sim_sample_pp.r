@@ -482,6 +482,6 @@ print(Sys.time())
 stopCluster(cl)
 
 # save output
-saveRDS(outlist, file=paste0(dir,"/out/reslist.rds"))
+saveRDS(outlist, file=paste0(dir,"/out/reslist_", Sys.Date(), ".rds"))
 
 # End
