@@ -75,13 +75,10 @@ nsims <- length(phi)
 # different strategies -- CHANGE HERE
 # list used to automate data storage creation and logic to limit evaluation steps
 samps <- c("srs","sys","pwgt","pwgt_ovr") #"strs","areawt"
-mods <- c("mbg","brt","rf")
+mods <- c("mbg","brt") #,"rf"
+# model + data strategies
 strats <- paste(rep(mods, each=length(samps)), samps, sep="_")
 strats <- c("pr_srs", strats)
-# strats <- c("pr_srs",
-#             "mbg_srs","mbg_sys","mbg_pwgt","mbg_pwgt_ovr",
-#             "brt_srs","brt_sys","brt_pwgt","brt_pwgt_ovr",
-#             "rf_srs","rf_sys","rf_pwgt","rf_pwgt_ovr") # removed: "pr_strs","pr_areawt"
 # clean labels - for plotting
 cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt",
                                  "mbg_sys","mbg_pwgt","mbg_pwgt_ovr",
