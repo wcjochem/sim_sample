@@ -294,7 +294,8 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
       reslabels[r, 2] <- sz / totsettle
       # store "true" populations
       reslabels[r, 3] <- totpop
-      reslabels[r, 4] <- subpop
+      reslabels[r, 4] <- hisubpop
+      reslabels[r, 5] <- losubpop
       # set.seed(d) # ?
     # sampling methods:
     ## simple random sample ##
