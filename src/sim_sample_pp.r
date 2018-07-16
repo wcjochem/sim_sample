@@ -297,61 +297,48 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
       reslabels[r, 4] <- hisubpop
       reslabels[r, 5] <- losubpop
       # set.seed(d) # ?
-    # sampling methods:
+	# sampling methods:
     ## simple random sample ##
-      if("pr_srs" %in% strats){
+      if("srs" %in% samps){
         srs <- sample(1:nrow(domain), size=sz, replace=F)
         # extract values of sampled points
         srs <- domain[srs,]
           # plot(count); points(srs[,c("x","y")]) # sample locns
-        # sample mean pop per pixel
-        samp_mean <- mean(srs$counts)
-        # apply mean to settled area domain
-        domain$pr_srs <- samp_mean
-      }
-      
-    ## Model-based estimates from random sample ##
-    # Geostats #
-      if("mbg_srs" %in% strats){
-        mbg_srs <- mbg(samp=srs,
+        # store iterative count of selected locns
+        srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] <- 
+          srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] + 1
+        
+        # simple mean
+        if("pr_srs" %in% strats){
+          # sample mean pop per pixel
+          samp_mean <- mean(srs$counts)
+          # apply mean to settled area domain
+          domain$pr_srs <- samp_mean
+        }
+        # geostats
+        if("mbg_srs" %in% strats){
+          mbg_srs <- mbg(samp=srs,
                        pred=domain,
                        bound=as(extent(count), "SpatialPolygons"),
                        mesh=sim_mesh)
-        # extract the predictions for each location 
-        domain$mbg_srs <- mbg_srs$predvals
+          # extract the predictions for each location 
+          domain$mbg_srs <- mbg_srs$predvals
+        }
+        # boosted regression tree
+        if("brt_srs" %in% strats){
+          brt_srs <- brt(samp=srs,
+                         pred=domain)
+          # extraction predictions
+          domain$brt_srs <- brt_srs$predvals
+        }
+        # random forest
+        if("rf_srs" %in% strats){
+          
+        }
       }
 
-    ## stratified random sample - equal weight ##
-      # equal sample size per stratum
-      if("pr_strs" %in% strats){
-        szs <- round(sz / nstrat)
-        # draw sample
-        strs <- data.frame(stratified(domain, "simp_strat", szs))
-          # plot(count); points(strs[,c("x","y")])
-        # mean values of counts per stratum
-        strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
-        # apply mean to settled area domain by stratum
-        domain$pr_strs <- strs_mean[domain$simp_strat, "mean"] # expand by domain
-      }
-
-   ## stratified random sample - prop to settled area ##
-      if("pr_areawt" %in% strats){
-        wgt <- zonal(settle, strat, sum)
-        wgt <- wgt[,'value'] / totsettle
-        # sample sizes - note rounding may causes some different totals
-        szs <- setNames(round(wgt*sz), unique(values(strat)))
-        # draw sample
-        strs <- data.frame(stratified(domain, "simp_strat", szs))
-        # mean values of counts per stratum
-        strs_mean <- aggregate(list("mean"=strs$counts), by=list("strat"=strs$simp_strat), FUN=mean)
-        # overall mean corrected for selection weights
-        # sum(wgt * strs_mean$mean)
-        # apply mean to settled area domain by stratum
-        domain$pr_areawt <- strs_mean[domain$simp_strat, "mean"]        
-      }
-      
-   ## systematic random sample - using oversample spaces as strata ##
-      if("mbg_sys" %in% strats){
+    ## systematic random sample - using oversample spaces as strata ##
+      if("sys" %in% samps){
         # sample size - not rounding may cause some different totals
         szs <- round(sz / length(unique(domain$oversamp)))
         # random sample within systematic strata
@@ -365,18 +352,30 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
           # add to main sample
           sys <- rbind(sys, avail[extra_samp,])
         }
-        # model results
-        mbg_sys <- mbg(samp=sys,
-                       pred=domain,
-                       bound=as(extent(count), "SpatialPolygons"),
-                       mesh=sim_mesh)
-        # extract predictions
-        domain$mbg_sys <- mbg_sys$predvals
-      }
-      
-   ## sample weighted by approximate population density -- test preferential sampling corrections
-   ## Model-based estimates ##
-      if("mbg_pwgt" %in% strats){
+        # geostats
+        if("mbg_sys" %in% strats){
+          mbg_sys <- mbg(samp=sys,
+                         pred=domain,
+                         bound=as(extent(count), "SpatialPolygons"),
+                         mesh=sim_mesh)
+          # extract predictions
+          domain$mbg_sys <- mbg_sys$predvals
+        }
+        # boosted regression tree
+        if("brt_sys" %in% strats){
+          brt_sys <- brt(samp=sys,
+                         pred=domain)
+          # extract predictions
+          domain$brt_sys <- brt_sys$predvals
+        }
+        # random forest
+        if("rf_sys" %in% strats){
+          
+        }
+      }  
+
+    ## sample weighted by approximate population density -- test preferential sampling corrections
+      if("pwgt" %in% samps){
         pwgt_samps <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
         # extract values from sampled points
         srs_pwgt <- domain[pwgt_samps,]
@@ -385,25 +384,36 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
         # sum(1/(srs_pwgt$pop_wgt/sum(domain$pop_wgt)) * srs_pwgt$counts)/sz
         # (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz * srs_pwgt$counts
         # weighted.mean(srs_pwgt$counts, (sum(domain$pop_wgt)/srs_pwgt$pop_wgt)/sz)
-        # model results
-        mbg_pwgt <- mbg(samp=srs_pwgt,
-                       pred=domain,
-                       bound=as(extent(count), "SpatialPolygons"),
-                       mesh=sim_mesh)
-        # extract the predictions for each location 
-        domain$mbg_pwgt <- mbg_pwgt$predvals
-      }  
       
-    ## spatial oversample using population-weighted sample ##
-    ## model-based estimates ##
-      if("mbg_pwgt_ovr" %in% strats){
-        if(!"mbg_pwgt" %in% strats){ # in case someone skipped previous method
-          pwgt_samps <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
-          # extract values from sampled points
-          srs_pwgt <- domain[pwgt_samps,]
-        } else{
-          srs_pwgt <- domain[pwgt_samps,] # update sample with all domain fields
+        # geostats
+        if("mbg_pwgt" %in% strats){
+          mbg_pwgt <- mbg(samp=srs_pwgt,
+                          pred=domain,
+                          bound=as(extent(count), "SpatialPolygons"),
+                          mesh=sim_mesh)
+          # extract the predictions for each location 
+          domain$mbg_pwgt <- mbg_pwgt$predvals
         }
+        # boosted regression tree
+        if("brt_pwgt" %in% strats){
+          brt_pwgt <- brt(samp=srs_pwgt,
+                          pred=domain)
+          # extract predictions
+          domain$brt_pwgt <- brt_pwgt$predvals
+        }
+        # random forest
+        if("rf_pwgt" %in% strats){
+          
+        }
+      }  
+
+    ## spatial oversample using population-weighted sample ##
+      if("pwgt_ovr" %in% samps){
+        if(!"pwgt" %in% samps){ # in case skipped previous method
+          pwgt_samps <- sample(1:nrow(domain), size=sz, replace=F, prob=domain$pop_wgt)
+        }
+        # extract values from sampled points
+        srs_pwgt <- domain[pwgt_samps,] # update sample with all domain fields
         # check distribution of sample
         sample_dist <- table(srs_pwgt$oversamp)
         # which areas have no samples
@@ -424,17 +434,28 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
                                 replace=F, prob=domain[domain$oversamp==c,"pop_wgt"]) # using population weights
             srs_pwgt <- rbind(srs_pwgt, newdomain[newsample,])
           }
-	}
-        # estimation
-        # model results
-        mbg_pwgt <- mbg(samp=srs_pwgt,
-                       pred=domain,
-                       bound=as(extent(count), "SpatialPolygons"),
-                       mesh=sim_mesh)
-        # extract the predictions for each location 
-        domain$mbg_pwgt_ovr <- mbg_pwgt$predvals
-      }        
-      
+        }
+        # geostats
+        if("mbg_pwgt_ovr" %in% strats){
+          mbg_pwgt_ovr <- mbg(samp=srs_pwgt,
+                              pred=domain,
+                              bound=as(extent(count), "SpatialPolygons"),
+                              mesh=sim_mesh)
+          # extract the predictions for each location 
+          domain$mbg_pwgt_ovr <- mbg_pwgt_ovr$predvals
+        }
+        # boosted regression tree
+        if("brt_pwgt_ovr" %in% strats){
+          brt_pwgt_ovr <- mbg(samp=srs_pwgt,
+                              pred=domain)
+          # extract predictions
+          domain$brt_pwgt_ovr <- brt_pwgt_ovr$predvals
+        }
+        # random forest
+        if("rf_pwgt_ovr" %in% strats){
+        
+        } 
+      }       
    #### Process results ####
       # per-pixel error metrics
       for(s in strats){ # each estimation technique
