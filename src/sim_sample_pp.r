@@ -62,20 +62,29 @@ make_subregion <- function(r, c, csz, regionsize){ # get the size in number of c
   return(extent(count, r-trows, r+brows, c-lcols, c+rcols))
 }
 
-
 # simulation parameters
 # nsims <- 4 # number of spatial fields to repeat
 regionsize <- 50 # dim of square region
 phi <- c(0.5, 0.1, 0.05, 0.001)
 ndraws <- 100 # number of repeated samples
+nsims <- length(phi)
 
 # implement sampling strategies
 # different strategies -- CHANGE HERE
-# list used to automate data storage creation and logic to limit evaluation steps
-strats <- c("pr_srs","mbg_srs","mbg_sys","mbg_pwgt","mbg_pwgt_ovr") # removed: "pr_strs","pr_areawt"
+samps <- c("srs","sys","pwgt","pwgt_ovr") #"strs","areawt"
+mods <- c("mbg","brt") #,"rf"
+# model + data strategies
+strats <- paste(rep(mods, each=length(samps)), samps, sep="_")
+strats <- c("pr_srs", strats)
 # clean labels - for plotting
-cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt","mbg_sys","mbg_pwgt","mbg_pwgt_ovr"),
-                         name=c("SRS","MBG-SRS","Strat RS","Area wgt Strata","MBG-SYS","MBG-PPS","MBG-PPS+OS"),
+cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt",
+                                 "mbg_sys","mbg_pwgt","mbg_pwgt_ovr",
+                                 "brt_srs","brt_sys","brt_pwgt","brt_pwgt_ovr",
+                                 "rf_srs","rf_sys","rf_pwgt","rf_pwgt_ovr"),
+                         name=c("SRS","MBG-SRS","Strat RS","Area wgt Strata",
+                                "MBG-SYS","MBG-PPS","MBG-PPS+OS",
+                                "BRT-SRS","BRT-SYS","BRT-PPS","BRT-PPS+OS",
+                                "RF-SRS","RF-SYS","RF-PPS","RF-PPS+OS"),
                          stringsAsFactors=F)
 # different sample sizes
 # sampsz <- c(50,100,150,200,250,300,350,400) # CHANGE HERE
