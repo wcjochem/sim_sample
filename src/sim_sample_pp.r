@@ -38,7 +38,7 @@ rmvn <- function(n, mu = 0, V = matrix(1)) {
 }
 
 # Function to get a small extent sub-region
-make_subregion <- function(r, c, csz, regionsize){ # get the size in number of cells for region
+make_subregion <- function(r, c, csz, regionsize, lyr){ # get the size in number of cells for region
   rcols <- lcols <- trows <- brows <- csz # default square sub-region
   # logic checks to prevent subdomain extending beyond border
   if(c+csz > regionsize){
@@ -59,7 +59,7 @@ make_subregion <- function(r, c, csz, regionsize){ # get the size in number of c
     brows <- csz + (csz - trows)
   }
   # create sub-region extent
-  return(extent(count, r-trows, r+brows, c-lcols, c+rcols))
+  return(extent(lyr, r-trows, r+brows, c-lcols, c+rcols))
 }
 
 # simulation parameters
@@ -236,7 +236,7 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
   csz <- 4 # set sub-area size (square: csz+1 x csz+1 cells)
   stopifnot(regionsize >= 2*csz + 1) # double-check no small regions
   # create sub-region
-  subreg <- make_subregion(row, col, csz, regionsize)
+  subreg <- make_subregion(row, col, csz, regionsize, count)
     # plot(count); plot(subreg, add=T); points(domain[which.max(domain$counts),c("x","y")]) # example plot
   # identify sub-region within the domain
   subcells <- cellsFromExtent(count, subreg) # find the cell numbers (matches domain and settle and count)
@@ -253,7 +253,7 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
   csz <- 4 # set sub-area size (square: csz+1 x csz+1 cells)
   stopifnot(regionsize >= 2*csz + 1) # double-check no small regions
   # create sub-region
-  subreg <- make_subregion(row, col, csz, regionsize)
+  subreg <- make_subregion(row, col, csz, regionsize, count)
     # plot(count); plot(subreg, add=T); points(domain[which.min(domain$counts),c("x","y")]) # example plot
   # identify sub-region within the domain
   subcells <- cellsFromExtent(count, subreg) # find the cell numbers (matches domain and settle and count)
@@ -305,8 +305,8 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
         srs <- domain[srs,]
           # plot(count); points(srs[,c("x","y")]) # sample locns
         # store iterative count of selected locns
-        srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] <- 
-          srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] + 1
+        # srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] <- 
+        #   srs_locn[[i]][srs_locn[[i]]$cnum %in% srs$cnum, paste0("sz_",sz)] + 1
         
         # simple mean
         if("pr_srs" %in% strats){
