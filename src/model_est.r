@@ -162,7 +162,7 @@ brt <- function(samp=NULL, pred=NULL){
   #                 bag.fraction=0.5)
   
   # fit model on sample
-  fit <- gbm(l_counts ~ elev + trend + x + y,
+  fit <- gbm(l_counts ~ elev + trend,
              distribution="gaussian",
              data=samp,
              n.trees=2000,
