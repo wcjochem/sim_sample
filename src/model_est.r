@@ -9,6 +9,7 @@
 # require(inlabru) 
 require(INLA)
 require(gbm)
+require(party)
 #require(dismo)
 
 ## simplified Bayesian geostatistcal model ##
@@ -195,4 +196,32 @@ brt <- function(samp, pred=NULL){
   }
   ## return
   return(list("predvals"=predvals, "fittedmod"=fit))
+}
+
+# random forest model
+rf <- function(samp, pred=NULL){
+  # transform outcome
+  samp$l_counts <- log(samp$counts)
+  
+  # fit model on sample
+  fit <- tryCatch({
+    cforest(l_counts ~ elev + trend,
+            data=samp,
+            controls=cforest_unbiased(mtry=2, ntree=1000))
+  },
+  error=function(e){
+    NULL
+  })
+  # check return
+  if(is.null(fit)){
+    predvals <- NA
+  } else{
+    # make predictions
+    predvals <- predict(fit,
+                        pred,
+                        OOB=TRUE,
+                        type="response")
+    # back transform
+    predvals <- exp(predvals)
+  }
 }
