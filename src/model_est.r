@@ -222,7 +222,7 @@ rf <- function(samp, pred=NULL){
                         OOB=TRUE,
                         type="response")
     # back transform
-    predvals <- exp(predvals)
+    predvals <- exp(as.vector(predvals))
   }
   ## return
   return(list("predvals"=predvals, "fittedmod"=fit))
