@@ -286,7 +286,7 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
   ### loop over samples, make repeated draws ###
   for(sz in sampsz){ # vary total sample size
     print(sz)
-	cat(paste0(" : ", sz), sep="\n", file=conn)
+	cat(paste0(" : ", sz, "   ", Sys.time()), sep="\n", file=conn)
 
   # repeated sample realisations
     for(d in 1:ndraws){ 
@@ -335,7 +335,10 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
         }
         # random forest
         if("rf_srs" %in% strats){
-          
+          rf_srs <- rf(samp=srs,
+                       pred=domain)
+          # extract predictions
+          domain$rf_srs <- rf_srs$predvals
         }
       }
 
@@ -372,7 +375,10 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
         }
         # random forest
         if("rf_sys" %in% strats){
-          
+          rf_sys <- rf(samp=sys,
+                       pred=domain)
+          # extract predictions
+          domain$rf_sys <- rf_sys$predvals          
         }
       }  
 
@@ -405,7 +411,10 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
         }
         # random forest
         if("rf_pwgt" %in% strats){
-          
+          rf_pwgt <- rf(samp=srs_pwgt,
+                        pred=domain)
+          # extract predictions
+          domain$rf_pwgt <- rf_pwgt$predvals          
         }
       }  
 
@@ -455,7 +464,10 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
         }
         # random forest
         if("rf_pwgt_ovr" %in% strats){
-        
+          rf_pwgt_ovr <- rf(samp=srs_pwgt,
+                            pred=domain)
+          # extract predictions
+          domain$rf_pwgt_ovr <- rf_pwgt_ovr$predvals        
         } 
       }       
    #### Process results ####
