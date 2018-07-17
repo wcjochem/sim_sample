@@ -224,4 +224,6 @@ rf <- function(samp, pred=NULL){
     # back transform
     predvals <- exp(predvals)
   }
+  ## return
+  return(list("predvals"=predvals, "fittedmod"=fit))
 }
