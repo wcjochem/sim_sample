@@ -164,6 +164,8 @@ cl <- makeCluster(min(nsims, detectCores()-1))
 # load materials on nodes
 clusterEvalQ(cl, library(INLA))
 clusterEvalQ(cl, library(raster))
+clusterEvalQ(cl, library(gbm))
+#clusterEvalQ(cl, library(dismo))
 clusterEvalQ(cl, library(gstat))
 clusterEvalQ(cl, library(Metrics))
 clusterEvalQ(cl, library(splitstackshape))
