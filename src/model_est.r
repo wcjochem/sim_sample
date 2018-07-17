@@ -9,7 +9,7 @@
 # require(inlabru) 
 require(INLA)
 require(gbm)
-require(dismo)
+#require(dismo)
 
 ## simplified Bayesian geostatistcal model ##
 # make a mesh for SPDE model
@@ -75,20 +75,28 @@ mbg <- function(samp=NULL, pred=NULL, bound=NULL, mesh=NULL,
   #             control.predictor=list(A=inla.stack.A(stack.all), compute=T, link=1),
   #             control.compute=c.c)
   #
-  fit <- inla(form, 
-              family="nbinomial",
-              data=inla.stack.data(stack.all),
-              control.predictor=list(A=inla.stack.A(stack.all), compute=T, link=1),
-              control.compute=c.c)
-  #
-    summary(fit)
-  # get IDs of the test set
-  idx.pred <- inla.stack.index(stack.all, "pred")$data
-  
-  # extract fitted values - posterior median of response
-  # predvals <- exp(fit$summary.fitted.values[idx.pred, c("0.5quant")])
-  predvals <- fit$summary.fitted.values[idx.pred, c("0.5quant")]
-  
+  fit <- tryCatch({
+      inla(form, 
+           family="nbinomial",
+           data=inla.stack.data(stack.all),
+           control.predictor=list(A=inla.stack.A(stack.all), compute=T, link=1),
+           control.compute=c.c)
+    },
+    error=function(e){
+      NULL
+    }
+  )
+  # check return
+  if(is.null(fit)){
+    predvals <- NA
+  } else{
+    # summary(fit)
+    # get IDs of the test set
+    idx.pred <- inla.stack.index(stack.all, "pred")$data
+    # extract fitted values - posterior median of response
+    # predvals <- exp(fit$summary.fitted.values[idx.pred, c("0.5quant")])
+    predvals <- fit$summary.fitted.values[idx.pred, c("0.5quant")]
+  }
   ## return
   return(list("predvals"=predvals, "fittedmod"=fit))
   
@@ -149,7 +157,7 @@ mbg <- function(samp=NULL, pred=NULL, bound=NULL, mesh=NULL,
 }
 
 # boosted regression tree
-brt <- function(samp=NULL, pred=NULL){
+brt <- function(samp, pred=NULL){
   # log transform outcome
   samp$l_counts <- log(samp$counts)
   # 
@@ -171,7 +179,7 @@ brt <- function(samp=NULL, pred=NULL){
              bag.fraction=0.5)
   # make predictions into the full domain
   predvals <- predict.gbm(fit,
-                          newdata=domain,
+                          newdata=pred,
                           n.trees=2000,
                           type="link")
   predvals <- exp(predvals) # back-transform to counts
