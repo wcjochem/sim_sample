@@ -170,20 +170,29 @@ brt <- function(samp, pred=NULL){
   #                 bag.fraction=0.5)
   
   # fit model on sample
-  fit <- gbm(l_counts ~ elev + trend,
-             distribution="gaussian",
-             data=samp,
-             n.trees=2000,
-             interaction.depth=4,
-             shrinkage=0.001,
-             bag.fraction=0.5)
-  # make predictions into the full domain
-  predvals <- predict.gbm(fit,
-                          newdata=pred,
-                          n.trees=2000,
-                          type="link")
-  predvals <- exp(predvals) # back-transform to counts
-  # plot(domain$counts, predvals)
-  
+  fit <- tryCatch({
+      gbm(l_counts ~ elev + trend,
+          distribution="gaussian",
+          data=samp,
+          n.trees=2000,
+          interaction.depth=4,
+          shrinkage=0.001,
+          bag.fraction=0.5)
+  },
+  error=function(x){
+    NULL
+  })
+  # check return
+  if(is.null(fit)){
+    predvals <- NA
+  } else{
+    # make predictions into the full domain
+    predvals <- predict.gbm(fit,
+                            newdata=pred,
+                            n.trees=2000,
+                            type="link")
+    predvals <- exp(predvals) # back-transform to counts
+  }
+  ## return
   return(list("predvals"=predvals, "fittedmod"=fit))
 }
