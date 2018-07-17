@@ -92,7 +92,7 @@ cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt",
 # different sample sizes
 # sampsz <- c(50,100,150,200,250,300,350,400) # CHANGE HERE
 sampsz <- c(50,100,150,200) # CHANGE HERE
-sampsz <- c(100)
+sampsz <- c(50)
 
 # abundance model parameters
 beta0 <- .4 # intercept
@@ -366,7 +366,10 @@ for(i in 1:nsims){ # loop over different simulated populations
         }
         # random forest
         if("rf_srs" %in% strats){
-          
+          rf_srs <- rf(samp=srs,
+                       pred=domain)
+          # extract predictions
+          domain$rf_srs <- rf_srs$predvals
         }
       }
 
@@ -403,7 +406,10 @@ for(i in 1:nsims){ # loop over different simulated populations
         }
         # random forest
         if("rf_sys" %in% strats){
-          
+          rf_sys <- rf(samp=sys,
+                       pred=domain)
+          # extract predictions
+          domain$rf_sys <- rf_sys$predvals
         }
       }  
 
@@ -436,7 +442,10 @@ for(i in 1:nsims){ # loop over different simulated populations
         }
         # random forest
         if("rf_pwgt" %in% strats){
-          
+          rf_pwgt <- rf(samp=srs_pwgt,
+                        pred=domain)
+          # extract predictions
+          domain$rf_pwgt <- rf_pwgt$predvals
         }
       }  
 
@@ -486,7 +495,10 @@ for(i in 1:nsims){ # loop over different simulated populations
         }
         # random forest
         if("rf_pwgt_ovr" %in% strats){
-        
+          rf_pwgt_ovr <- rf(samp=srs_pwgt,
+                            pred=domain)
+          # extract predictions
+          domain$rf_pwgt_ovr <- rf_pwgt_ovr$predvals
         } 
       } 
 
