@@ -72,7 +72,7 @@ nsims <- length(phi)
 # implement sampling strategies
 # different strategies -- CHANGE HERE
 samps <- c("srs","sys","pwgt","pwgt_ovr") #"strs","areawt"
-mods <- c("mbg","brt") #,"rf"
+mods <- c("mbg","brt","rf") #
 # model + data strategies
 strats <- paste(rep(mods, each=length(samps)), samps, sep="_")
 strats <- c("pr_srs", strats)
@@ -181,6 +181,7 @@ clusterExport(cl, varlist=c("make_subregion")) # export functions
 
 # Loop and evaluate 
 outlist <- clusterApply(cl, 1:nsims, function(i){
+  set.seed(1126)
   conn <- file( sprintf("/home/wcj1n15/sim_sample/out/process_%d.txt" , Sys.getpid()) , open = "a" )
   r <- 1 # counter to fill in the output
   print(i)
@@ -457,7 +458,7 @@ outlist <- clusterApply(cl, 1:nsims, function(i){
         }
         # boosted regression tree
         if("brt_pwgt_ovr" %in% strats){
-          brt_pwgt_ovr <- mbg(samp=srs_pwgt,
+          brt_pwgt_ovr <- brt(samp=srs_pwgt,
                               pred=domain)
           # extract predictions
           domain$brt_pwgt_ovr <- brt_pwgt_ovr$predvals
