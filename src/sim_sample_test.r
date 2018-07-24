@@ -75,7 +75,7 @@ nsims <- length(phi)
 # different strategies -- CHANGE HERE
 # list used to automate data storage creation and logic to limit evaluation steps
 samps <- c("srs","sys","pwgt","pwgt_ovr") #"strs","areawt"
-mods <- c("mbg","brt") #,"rf"
+mods <- c("mbg","brt","rf") #,"rf"
 # model + data strategies
 strats <- paste(rep(mods, each=length(samps)), samps, sep="_")
 strats <- c("pr_srs", strats)
@@ -322,7 +322,8 @@ for(i in 1:nsims){ # loop over different simulated populations
     srs_locn[[i]][[paste0("sz_",sz)]] <- 0
 
   # repeated sample realisations
-    for(d in 1:ndraws){ 
+    for(d in 1:ndraws){
+      print(paste0(" ", d))
       # store sample size as proportion of settled area
       reslabels[r, 3] <- sz / totsettle
       # store "true" populations
@@ -488,7 +489,7 @@ for(i in 1:nsims){ # loop over different simulated populations
         }
         # boosted regression tree
         if("brt_pwgt_ovr" %in% strats){
-          brt_pwgt_ovr <- mbg(samp=srs_pwgt,
+          brt_pwgt_ovr <- brt(samp=srs_pwgt,
                               pred=domain)
           # extract predictions
           domain$brt_pwgt_ovr <- brt_pwgt_ovr$predvals
