@@ -15,16 +15,31 @@ require(party)
 ## replicate ORNL confidence interval estimation ##
 # Crude Monte Carlo from SRS -- shown in DRC work #
 mc_ci <- function(samp=NULL, total_area=NULL){
-  sampsize <- nrow(samp)
+  sampsize <- nrow(samp) # samples; total_area is the length of the domain
 
-  total_est <- mean(samp$counts * total_area)
-  sq_err <- ((samp$counts * total_area) - total_est)^2
-  sum_sqerr <- sum(sq_err)
-  
+  total_est <- mean(samp$counts * total_area) # average predicted total
+  sq_err <- ((samp$counts * total_area) - total_est)^2 # squared errors
+  sum_sqerr <- sum(sq_err) # sum of squared errors
+  # estimate the variance
   var_est <- sum_sqerr / (sampsize * (sampsize - 1))
-  t_95 <- qt(0.975, sampsize - 1)
-  margins <- t_95 * var_est^.5
+  t_95 <- qt(0.975, sampsize - 1) # approximate using t distribution
+  margins <- t_95 * var_est^.5 # upper/lower CI
   return(c(total_est - margins, total_est + margins))
+}
+
+# lognormal method from Weber et al. paper #
+lognorm_ci <- function(samp=NULL, total_area=NULL){
+  sampsize <- nrow(samp)
+  
+  total_est <- vector("numeric",length=10000)
+  fit_param <- fitdistr(samp$counts, "lognormal")
+  for(i in 1:10000){
+    m_est <- rnorm(1,mean = fit_param$estimate["meanlog"], fit_param$sd["meanlog"])
+    sd_est <- rnorm(1,mean = fit_param$estimate["sdlog"], fit_param$sd["sdlog"])
+    total_est[i] <- sum(rlnorm(total_area, m_est, sd_est))
+  }
+  quantile(total_est, probs=c(0.025, 0.975))
+  total_est <- sum(rlnorm(total_area, fit_param$estimate["meanlog"], fit_param$estimate["sdlog"]))
 }
 
 ## simplified Bayesian geostatistcal model ##
