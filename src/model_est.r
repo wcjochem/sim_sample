@@ -12,6 +12,21 @@ require(gbm)
 require(party)
 #require(dismo)
 
+## replicate ORNL confidence interval estimation ##
+# Crude Monte Carlo from SRS -- shown in DRC work #
+mc_ci <- function(samp=NULL, total_area=NULL){
+  sampsize <- nrow(samp)
+
+  total_est <- mean(samp$counts * total_area)
+  sq_err <- ((samp$counts * total_area) - total_est)^2
+  sum_sqerr <- sum(sq_err)
+  
+  var_est <- sum_sqerr / (sampsize * (sampsize - 1))
+  t_95 <- qt(0.975, sampsize - 1)
+  margins <- t_95 * var_est^.5
+  return(c(total_est - margins, total_est + margins))
+}
+
 ## simplified Bayesian geostatistcal model ##
 # make a mesh for SPDE model
 makemesh <- function(locn=NULL, bound=NULL, me=c(1,2), co=1, off=c(5,10)){
@@ -227,3 +242,5 @@ rf <- function(samp, pred=NULL){
   ## return
   return(list("predvals"=predvals, "fittedmod"=fit))
 }
+
+
