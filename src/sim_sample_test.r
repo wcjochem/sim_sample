@@ -34,7 +34,7 @@ rmvn <- function(n, mu = 0, V = matrix(1)) {
   p <- length(mu)
   if (any(is.na(match(dim(V), p)))) 
     stop("Dimension problem!")
-  D <- chol(V)
+  D <- chol(V) # use Cholesky deomposition to get root of matrix
   t(matrix(rnorm(n * p), ncol = p) %*% D + rep(mu, rep(n, p)))
 }
 
@@ -68,17 +68,25 @@ make_subregion <- function(r, c, csz, regionsize){ # get the size in number of c
 regionsize <- 50 # dim of square region
 # phi <- 0.05 # smoothness parameter
 phi <- c(0.5, 0.1, 0.05, 0.001)
-ndraws <- 10 # number of repeated samples
+ndraws <- 100 # number of repeated samples
 nsims <- length(phi)
 
 # implement sampling strategies
 # different strategies -- CHANGE HERE
 # list used to automate data storage creation and logic to limit evaluation steps
-samps <- c("srs","sys","pwgt","pwgt_ovr") #"strs","areawt"
-mods <- c("mbg","brt","rf") #,"rf"
+samps <- c("srs")
+# samps <- c("srs","sys","pwgt","pwgt_ovr") #"strs","areawt"
+mods <- ""
+# mods <- c("mbg","brt","rf") #,"rf"
+
 # model + data strategies
-strats <- paste(rep(mods, each=length(samps)), samps, sep="_")
-strats <- c("pr_srs", strats)
+if(mods != ""){
+  strats <- paste(rep(mods, each=length(samps)), samps, sep="_")
+  strats <- c("pr_srs", strats)
+} else{
+  strats <- "pr_srs"
+}
+
 # clean labels - for plotting
 cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt",
                                  "mbg_sys","mbg_pwgt","mbg_pwgt_ovr",
@@ -92,7 +100,7 @@ cleanlabel <- data.frame(strat=c("pr_srs","mbg_srs","pr_strs","pr_areawt",
 # different sample sizes
 # sampsz <- c(50,100,150,200,250,300,350,400) # CHANGE HERE
 sampsz <- c(50,100,150,200) # CHANGE HERE
-sampsz <- c(50)
+# sampsz <- c(50)
 
 # abundance model parameters
 beta0 <- .4 # intercept
@@ -212,6 +220,8 @@ pred_errs <- matrix(NA, nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*2)
 pred_pop <- matrix(NA, nrow=nsims*length(sampsz)*ndraws, ncol=length(strats)*3) # x3 for total, hi/low domains
 # storage to record sample locations from SRS
 srs_locn <- vector("list", length=nsims)
+# storage for confidence intervals
+srs_ci <- vector("list", length=nsims)
 
 # make mesh for spatial models
 sim_mesh <- makemesh(bound=as(extent(elev), "SpatialPolygons"))
@@ -260,6 +270,8 @@ for(i in 1:nsims){ # loop over different simulated populations
     
   # store the domain for sample counts
   srs_locn[[i]] <- domain
+  # blank storage for confidence intervals
+  srs_ci[[i]] <- matrix(data=cbind(rep(sampsz, each=ndraws), NA, NA, NA, NA), nrow=length(sampsz)*ndraws, ncol=5)
     
   # create a high pop sub-domain area to estimate totals
   # analogous to having a capital city within a regional sampling domain
@@ -372,6 +384,10 @@ for(i in 1:nsims){ # loop over different simulated populations
           # extract predictions
           domain$rf_srs <- rf_srs$predvals
         }
+        
+        # get confidence interval for total predicted population
+        srs_ci[[i]][d + ((which(sampsz==sz)-1)*ndraws), 2:3] <- mc_ci(srs, nrow(domain))
+        srs_ci[[i]][d + ((which(sampsz==sz)-1)*ndraws), 4:5] <- lognorm_ci(srs, nrow(domain))
       }
 
     ## systematic random sample - using oversample spaces as strata ##
@@ -520,9 +536,9 @@ for(i in 1:nsims){ # loop over different simulated populations
 
       r <- r+1
       gc()
-    }
-  }
-}
+    } # end loop on ndraws
+  } # end loop on sampszs
+} # end loop on nsims
 print(Sys.time())
 
 # add the labels to matrix of results
@@ -677,6 +693,21 @@ glosubpop <- ggplot(data=losubpop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) +
   ggtitle("Estimated subregion population") +
   ylab("Population") +
   xlab("Sample size") +
+  theme_bw()
+
+## plot SRS predictions + confidence intervals ##
+all_ci <- do.call(rbind.data.frame, srs_ci)
+names(all_ci) <- c("sz","lo_mc","hi_mc","lo_ln","hi_ln")
+
+all_ci <- cbind(pop.df.l, all_ci)
+names(all_ci)[2] <- "samp_sz"
+  head(all_ci)
+
+ggplot(all_ci[1:2000,], aes(x=1:2000, y=pop)) +
+  geom_linerange(aes(ymin=lo_mc, ymax=hi_mc), col="black", alpha=0.1, show.legend=F) +
+  geom_point(show.legend=F) +
+  facet_wrap(~ as.factor(sz), scales="free", ncol=4) +
+  geom_hline(aes(yintercept=totpop[1]), col="blue", size=1) +
   theme_bw()
 
 ## plot combined results
