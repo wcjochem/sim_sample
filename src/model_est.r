@@ -10,6 +10,7 @@
 require(INLA)
 require(gbm)
 require(party)
+require(MASS)
 #require(dismo)
 
 ## replicate ORNL confidence interval estimation ##
@@ -29,17 +30,16 @@ mc_ci <- function(samp=NULL, total_area=NULL){
 
 # lognormal method from Weber et al. paper #
 lognorm_ci <- function(samp=NULL, total_area=NULL){
-  sampsize <- nrow(samp)
+  sampsize <- nrow(samp) # samples; total_area is the length of the domain
   
-  total_est <- vector("numeric",length=10000)
-  fit_param <- fitdistr(samp$counts, "lognormal")
-  for(i in 1:10000){
-    m_est <- rnorm(1,mean = fit_param$estimate["meanlog"], fit_param$sd["meanlog"])
-    sd_est <- rnorm(1,mean = fit_param$estimate["sdlog"], fit_param$sd["sdlog"])
-    total_est[i] <- sum(rlnorm(total_area, m_est, sd_est))
+  total_est <- vector("numeric",length=10000) # store 10k realisations
+  fit_param <- fitdistr(samp$counts, "lognormal") # lognormal dist fit to the samples
+  for(i in 1:10000){ # draw 10k different approximate samples with random alternation around lognorm
+    m_est <- rnorm(1,mean = fit_param$estimate["meanlog"], fit_param$sd["meanlog"]) # mean
+    sd_est <- rnorm(1,mean = fit_param$estimate["sdlog"], fit_param$sd["sdlog"]) # sd
+    total_est[i] <- sum(rlnorm(total_area, m_est, sd_est)) # draw density value per pixel from the lognormal
   }
-  quantile(total_est, probs=c(0.025, 0.975))
-  total_est <- sum(rlnorm(total_area, fit_param$estimate["meanlog"], fit_param$estimate["sdlog"]))
+  return(quantile(total_est, probs=c(0.025, 0.975)))
 }
 
 ## simplified Bayesian geostatistcal model ##
