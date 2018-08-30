@@ -122,6 +122,12 @@ count_plots <- lapply(1:length(phi), function(x){
 # arrange all plots
 marrangeGrob(count_plots, nrow=2, ncol=2)
 
+# alternative plots
+plotstack <- stack(countfields)
+plotstack[plotstack==0] <- NA
+levelplot(plotstack,
+          names.attr=paste0("phi =", phi))  
+
 
 
 #####
@@ -166,33 +172,58 @@ err.mape.l <- reshape(err.df.mape,
                     timevar="est",
                     times=paste0("mape_", strats),
                     direction="long")
-
+# clean labels
 err.rmse.l$Method <- cleanlabel[match(gsub("rmse_","", err.rmse.l$est, fixed=T), cleanlabel$strat),"name"]
+err.rmse.l$Method <- factor(err.rmse.l$Method, levels=c("SRS", 
+                                                        paste0("MBG-",c("SRS","SYS","PPS","PPS+OS")),
+                                                        paste0("BRT-",c("SRS","SYS","PPS","PPS+OS")),
+                                                        paste0("RF-",c("SRS","SYS","PPS","PPS+OS"))
+                                                        )) # change order
+
+err.rmse.l$model <-  gsub( "(.*)-(.*)", "\\1",  err.rmse.l$Method) # get the general model category
+  
+err.mape.l$Method <- cleanlabel[match(gsub("mape_","", err.mape.l$est, fixed=T), cleanlabel$strat),"name"]
+err.mape.l$Method <- factor(err.mape.l$Method, levels=c("SRS", 
+                                                        paste0("MBG-",c("SRS","SYS","PPS","PPS+OS")),
+                                                        paste0("BRT-",c("SRS","SYS","PPS","PPS+OS")),
+                                                        paste0("RF-",c("SRS","SYS","PPS","PPS+OS"))
+                                                        )) # change order
+
+err.mape.l$model <-  gsub( "(.*)-(.*)", "\\1",  err.mape.l$Method) # get the general model category
+
+# remove outliers 
+ylim1 <- boxplot.stats(err.rmse.l$err)$stats[c(1, 5)]
+err.rmse.l$err <- ifelse(err.rmse.l$err > 1.1*ylim1[2], NA, err.rmse.l$err)
 
 # plot EA-level error metrics
 grmse <- ggplot(data=err.rmse.l, aes(x=as.factor(sz), y=err, fill=Method)) +
   geom_boxplot() +
-  facet_wrap(~sim, scales="free", ncol=4) +
+  facet_wrap(~sim, scales="free", nrow=4) +
   ggtitle("RMSE") +
   ylab("RMSE") +
   xlab("Sample size") +
   theme_bw()
 
-ylim1 = boxplot.stats(err.rmse.l$err)$stats[c(1, 5)]
-# scale y limits based on ylim1
-grmse <- grmse + coord_cartesian(ylim = ylim1*1.1)
+# ylim1 = boxplot.stats(err.rmse.l$err)$stats[c(1, 5)]
+# # scale y limits based on ylim1
+# grmse <- grmse + coord_cartesian(ylim = ylim1*1.1)
 
-gmape <- ggplot(data=err.mape.l, aes(x=as.factor(sz), y=err, fill=est)) +
+# remove ooutliers and potential errors
+err.mape.l[is.infinite(err.mape.l$err) | is.na(err.mape.l$err), "err"] <- NA
+ylim1 <- boxplot.stats(err.mape.l$err)$stats[c(1, 5)]
+err.mape.l$err <- ifelse(err.mape.l$err > 10*ylim1[2], NA, err.mape.l$err)
+
+gmape <- ggplot(data=err.mape.l, aes(x=as.factor(sz), y=err, fill=Method)) +
   geom_boxplot() +
-  facet_wrap(~sim, scales="free", ncol=4) +
+  facet_wrap(~sim, scales="free", nrow=4) +
   ggtitle("MAPE") +
   ylab("MAPE") +
   xlab("Sample size") +
   theme_bw()
 
-ylim1 = boxplot.stats(err.mape.l$err)$stats[c(1, 5)]
-# scale y limits based on ylim1
-gmape <- gmape + coord_cartesian(ylim = ylim1*1.1)
+# ylim1 = boxplot.stats(err.mape.l$err)$stats[c(1, 5)]
+# # scale y limits based on ylim1
+# gmape <- gmape + coord_cartesian(ylim = ylim1*1.1)
 
 
 
@@ -214,6 +245,12 @@ pop.df.l <- reshape(pop.df,
                     direction="long")
 # add clean labels
 pop.df.l$Method <- cleanlabel[match(pop.df.l$est, cleanlabel$strat),"name"]
+pop.df.l$Method <- factor(pop.df.l$Method, levels=c("SRS", 
+                                                    paste0("MBG-",c("SRS","SYS","PPS","PPS+OS")),
+                                                    paste0("BRT-",c("SRS","SYS","PPS","PPS+OS")),
+                                                    paste0("RF-",c("SRS","SYS","PPS","PPS+OS"))
+                                                  )) # change order
+
 # long-format for subpop data frames - for plotting
 hisubpop.df.l <- reshape(hisubpop.df,
                          varying=paste0(strats, "_hi"),
@@ -260,7 +297,7 @@ ghisubpop <- ggplot(data=hisubpop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) +
   geom_boxplot() +
   facet_wrap(~sim, scales="free", nrow=4) +
   geom_hline(data=totsubpop_hi, aes(yintercept=hisubpop, col="red"), show.legend=F) +
-  ggtitle("Estimated high population subregion") +
+  ggtitle("High population subregion") +
   ylab("Population") +
   xlab("Sample size") +
   theme_bw() +
@@ -270,7 +307,7 @@ glosubpop <- ggplot(data=losubpop.df.l, aes(x=as.factor(sz), y=pop, fill=est)) +
   geom_boxplot() +
   facet_wrap(~sim, scales="free", nrow=4) +
   geom_hline(data=totsubpop_lo, aes(yintercept=losubpop, col="red"), show.legend=F) +
-  ggtitle("Estimated low population subregion") +
+  ggtitle("Low population subregion") +
   ylab("Population") +
   xlab("Sample size") +
   theme_bw() +
@@ -309,8 +346,8 @@ grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, 
 }  
 
 # grid_arrange_shared_legend(gtotpop, gsubpop, grmse, gmape, ncol=4, nrow=1)
-grid_arrange_shared_legend(gtotpop, ghisubpop, glosubpop, ncol=3, nrow=1)
-grid_arrange_shared_legend(grmse, gmape, ncol=1, nrow=2)
+grid_arrange_shared_legend(gtotpop, ghisubpop, glosubpop, ncol=3, nrow=1, position="right")
+grid_arrange_shared_legend(grmse, gmape, ncol=2, nrow=1, position="right")
 
 ##
 # library(cowplot)
