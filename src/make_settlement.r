@@ -43,7 +43,7 @@ make_settlement <- function(population_raster){
   urban_only_raster <- urban_rural_raster
   urban_only_raster[!urban_only_raster==2] <- NA
   urban_clumps <- clump(urban_only_raster, directions = 4)
-    plot(urban_clumps)
+    # plot(urban_clumps)
   urban_only <- data.frame(rasterToPoints(urban_clumps))
   urban_centres <- sapply(split(urban_only[,c("x", "y")], urban_only$clumps), colMeans)
   
