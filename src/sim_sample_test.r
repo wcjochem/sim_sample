@@ -27,6 +27,8 @@ library(Metrics)
 
 ## load code to produce model-based estimates ##
 source("./src/model_est.r")
+## load code to create settlement type grids
+source("./src/make_settlement.r")
 
 ## HELPER FUNCTIONS ##
 # Function to draw samples from a multivariate normal distribution
@@ -199,6 +201,20 @@ count_plots <- lapply(1:length(phi), function(x){
 # arrange all plots
 marrangeGrob(count_plots, nrow=2, ncol=2)
 
+## get settlement types grid
+settlement <- vector("list", length=length(countfields))
+for(p in 1:length(countfields)){
+  settlement[[p]] <- make_settlement(countfields[[p]])
+}
+#
+  par(mfrow=c(2,2), mar=c(1,1,1,1))
+  plot(settlement[[1]], main="Sim 1")
+  plot(settlement[[2]], main="Sim 2")
+  plot(settlement[[3]], main="Sim 3")
+  plot(settlement[[4]], main="Sim 4")
+  par(mfrow=c(1,1))
+#  
+  
 
 ##
 # preallocate storage for the output
