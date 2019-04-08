@@ -37,3 +37,33 @@ local.plot.field <- function(field, mesh, xlim=c(0,10), ylim=c(0,10), ...){
 # load code to create settlement type grids
 source("./make_settlement.r")
 
+## simulations set-up ##
+# dimensions
+r_width <- 20
+r_height <- 20
+
+# true values
+sigma.u <- 1.5
+range <- 3 # 1, 3, 5
+
+# make mesh
+fake.locations <- matrix(c(0,0,r_width,r_height,0,r_height,r_width,0), nrow=4, byrow=T)
+# mesh.sim <- inla.mesh.2d(loc=fake.locations, max.edge=c(0.4, 2), offset=c(1,6))
+mesh.sim <- inla.mesh.2d(loc=fake.locations, max.edge=c(0.4, 2))
+
+  plot(mesh.sim)
+  points(fake.locations, pch=16)
+  axis(1); axis(2)
+  
+# simulate field  
+spde <- inla.spde2.pcmatern(mesh.sim, prior.range=c(.5, .5), prior.sigma=c(.5, .5))
+
+Qu <- inla.spde.precision(spde, theta=c(log(range), log(sigma.u)))
+u <- inla.qsample(n=1, Q=Qu, seed=inla.seed)
+u <- u[ ,1]
+
+  local.plot.field(u, mesh.sim, xlim=c(0,r_width), ylim=c(0,r_height))
+  len <- range
+  arrows(5-0.5*len, .5, 5+0.5*len, .5, length=0.05, angle=90, code=3, lwd=3)
+  
+
