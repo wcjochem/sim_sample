@@ -41,7 +41,25 @@ source("./make_settlement.r")
 # dimensions
 r_width <- 20
 r_height <- 20
+# create spatial units 
+# make 5 horizontal strata (naive stratification for comparison)
+# see: https://gis.stackexchange.com/questions/34895/create-zonal-grid-in-r
+rows <- 50; cols <- 200; n <- 200
+strat1 <- outer(1:n, 1:n, 
+               function(i,j) (i-1) %/% rows * ((n+1) %/% cols) + (j-1) %/% cols + 1)
+strat1 <- raster(strat1, xmn=0, xmx=20, ymn=0, ymx=20)
+# nstrat <- length(unique(values(strat)))
+  plot(strat1, col=randomColor(4), legend=F)
+  abline(v=10)
+# level2 local areas
+rows <- 25; cols <- 25; n <- 200
+strat2 <- outer(1:n, 1:n, 
+               function(i,j) (i-1) %/% rows * ((n+1) %/% cols) + (j-1) %/% cols + 1)
+strat2 <- raster(strat2, xmn=0, xmx=20, ymn=0, ymx=20)
+  plot(strat2, col=randomColor(64), legend=F)
+  abline(v=10)
 
+## population model set-up ##
 # true values
 sigma.u <- 1.5
 range <- 3 # 1, 3, 5
@@ -94,4 +112,5 @@ y <- rpois(n, exp(lin.pred))
 y_rast <- r # store pop as raster
 values(y_rast) <- y
   plot(y_rast)
+
   
