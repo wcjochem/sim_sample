@@ -69,7 +69,7 @@ u <- u[ ,1]
 # simulate data at locations
 loc.data <- as.matrix(expand.grid(seq(0, r_width, .1), seq(0, r_height, .1))) + .1
 n <- nrow(loc.data)
-
+# create a raster covering the study area
 r <- raster(nrows=r_height, ncols=r_width, xmn=0, xmx=r_width, ymn=0, ymx=r_height, resolution=.1, crs=NULL)
 loc.data <- coordinates(r)
 n <- nrow(loc.data)
@@ -78,3 +78,8 @@ n <- nrow(loc.data)
 A <- inla.spde.make.A(mesh=mesh.sim, loc=loc.data)
 u <- drop(A %*% u)
 
+# create a covariate
+x <- runif(n)-0.5 # centred at zero
+cov_r <- r # create a blank raster
+values(cov_r) <- x # write in values
+  plot(cov_r)
