@@ -6,7 +6,7 @@
 # and testing a range of sampling techniques to estimate population.
 #
 # Author: Chris Jochem (W.C.Jochem@soton.ac.uk)
-#
+# Simulation set-up based on: https://haakonbakka.bitbucket.io/btopic122.html
 #
 
 library(INLA)
@@ -66,4 +66,15 @@ u <- u[ ,1]
   len <- range
   arrows(5-0.5*len, .5, 5+0.5*len, .5, length=0.05, angle=90, code=3, lwd=3)
   
+# simulate data at locations
+loc.data <- as.matrix(expand.grid(seq(0, r_width, .1), seq(0, r_height, .1))) + .1
+n <- nrow(loc.data)
+
+r <- raster(nrows=r_height, ncols=r_width, xmn=0, xmx=r_width, ymn=0, ymx=r_height, resolution=.1, crs=NULL)
+loc.data <- coordinates(r)
+n <- nrow(loc.data)
+
+# project spatial field to locations
+A <- inla.spde.make.A(mesh=mesh.sim, loc=loc.data)
+u <- drop(A %*% u)
 
