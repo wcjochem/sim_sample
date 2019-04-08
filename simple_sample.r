@@ -37,6 +37,7 @@ local.plot.field <- function(field, mesh, xlim=c(0,10), ylim=c(0,10), ...){
 # load code to create settlement type grids
 source("./make_settlement.r")
 
+
 ## simulations set-up ##
 # dimensions
 r_width <- 20
@@ -58,6 +59,7 @@ strat2 <- outer(1:n, 1:n,
 strat2 <- raster(strat2, xmn=0, xmx=20, ymn=0, ymx=20)
   plot(strat2, col=randomColor(64), legend=F)
   abline(v=10)
+  
 
 ## population model set-up ##
 # true values
@@ -111,6 +113,14 @@ y <- rpois(n, exp(lin.pred))
 
 y_rast <- r # store pop as raster
 values(y_rast) <- y
-  plot(y_rast)
+  plot(y_rast) # example gridded population
+# calculate totals per area (test)
+zonal(y_rast, strat2)
+zonal(y_rast, strat1)
 
-  
+# derive a settlement "covariate" based on population centers/density
+sett <- make_settlement(y_rast)
+  plot(sett, col=randomColor(6)) # raster plotting
+  abline(v=10)
+
+zonal(y_rast, sett)  
