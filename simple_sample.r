@@ -83,3 +83,15 @@ x <- runif(n)-0.5 # centred at zero
 cov_r <- r # create a blank raster
 values(cov_r) <- x # write in values
   plot(cov_r)
+
+# construct linear predictor
+beta = c(1, 1.5) # true coefficients 
+
+lin.pred <- beta[1] + beta[2]*x + u
+# observation
+y <- rpois(n, exp(lin.pred))
+
+y_rast <- r # store pop as raster
+values(y_rast) <- y
+  plot(y_rast)
+  
