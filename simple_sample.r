@@ -128,8 +128,8 @@ zonal(y_rast, sett)
 
 ## loop to build synthetic populations ##
 
-ranges <-  c(1,3,5) # varying spatial field
-range <- 3
+ranges <-  c(1.5,3,5) # varying spatial field
+#range <- 3
 sigma.u <- 1.5
 nsims <- 5 # number of population per spatial field
 
