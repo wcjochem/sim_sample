@@ -30,4 +30,8 @@ strat2 <- outer(1:n, 1:n,
 strat2 <- raster(strat2, xmn=0, xmx=20, ymn=0, ymx=20)
   
 # sampling  
-sampleszs <- c(50, 100, 150, 200)
+nsamples <- 100 # number of draws of each size and type
+sampleszs <- c(50, 100, 150, 200) # range of sample sizes
+
+# get list of simulated surfaces
+sim_files <- list.files("./out_sim", pattern=glob2rx("sim_surface_*.rds"), recursive=F)
