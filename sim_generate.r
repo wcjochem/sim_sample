@@ -1,6 +1,6 @@
 # 
 # Simulate spatially-correlated density maps
-# sim_sample.r
+# sim_generate.r
 #
 # Demonstration program for simulating spatially-correlated data
 # and testing a range of sampling techniques to estimate population.
