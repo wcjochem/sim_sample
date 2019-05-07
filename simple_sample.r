@@ -59,6 +59,83 @@ strat2 <- outer(1:n, 1:n,
 strat2 <- raster(strat2, xmn=0, xmx=20, ymn=0, ymx=20)
   plot(strat2, col=randomColor(64), legend=F)
   abline(v=10)
+
+## loop to build synthetic populations ##
+# set up values
+ranges <-  c(1.5,3,5) # varying spatial field
+#range <- 3
+sigma.u <- 1
+nsims <- 50 # number of populations per spatial field
+
+fake.locations <- matrix(c(0,0,r_width,r_height,0,r_height,r_width,0), nrow=4, byrow=T)
+mesh.sim <- inla.mesh.2d(loc=fake.locations, max.edge=c(0.4, 2))
+# simulate field  
+spde <- inla.spde2.pcmatern(mesh.sim, prior.range=c(.5, .5), prior.sigma=c(.5, .5))
+# simulate data at locations
+loc.data <- as.matrix(expand.grid(seq(0, r_width, .1), seq(0, r_height, .1))) + .1
+n <- nrow(loc.data)
+# create a raster covering the study area
+r <- raster(nrows=r_height, ncols=r_width, xmn=0, xmx=r_width, ymn=0, ymx=r_height, resolution=.1, crs=NULL)
+loc.data <- coordinates(r)
+n <- nrow(loc.data)
+
+
+# storage
+simdata <- vector(mode="list", length=nsims)
+
+# looping
+for (range in ranges){ # loop and vary spatial range
+  print(paste0("Range: ", range))
+  print(" Simulations")
+
+  for (s in 1:nsims){ # loop number of simulated pops
+    print(paste0(" ", s))
+    inla.seed <- s # fix seed per simulation
+    # simulate spatial field
+    Qu <- inla.spde.precision(spde, theta=c(log(range), log(sigma.u)))
+    u <- inla.qsample(n=1, Q=Qu, seed=inla.seed)
+    u <- u[ ,1]
+      
+    # simulate data at locationss
+    loc.data <- as.matrix(expand.grid(seq(0, r_width, .1), seq(0, r_height, .1))) + .1
+    n <- nrow(loc.data)
+    # create a raster covering the study area
+    r <- raster(nrows=r_height, ncols=r_width, xmn=0, xmx=r_width, ymn=0, ymx=r_height, resolution=.1, crs=NULL)
+    loc.data <- coordinates(r)
+    n <- nrow(loc.data)
+    
+    # project spatial field to locations
+    A <- inla.spde.make.A(mesh=mesh.sim, loc=loc.data)
+    u <- drop(A %*% u)
+    
+    # create a covariate
+    x <- runif(n)-0.5 # centred at zero
+    cov_r <- r # create a blank raster
+    values(cov_r) <- x # write in values
+      # plot(cov_r)
+    
+    # construct linear predictor
+    beta <- c(1, 1.5) # true coefficients 
+    
+    lin.pred <- beta[1] + beta[2]*x + u
+    # observation
+    y <- rpois(n, exp(lin.pred))
+    
+    y_rast <- r # store pop as raster
+    values(y_rast) <- y
+    
+    # derive settlement "types" from population
+    sett <- make_settlement(y_rast)
+  
+    simdata[[s]] <- list("pop"=y_rast, "cov"=cov_r, "sett"=sett)
+  } # end pop simulation loop
+  # save simulation outputs locally
+  saveRDS(simdata, file=paste0("./out_sim/sim_surface_", range,".rds"))
+} # end loop over range values
+
+
+
+
   
 ## population model set-up ##
 # true values
@@ -124,85 +201,6 @@ strat2 <- raster(strat2, xmn=0, xmx=20, ymn=0, ymx=20)
 #   abline(v=10)
 # 
 # zonal(y_rast, sett)  
-
-
-## loop to build synthetic populations ##
-# set up values
-ranges <-  c(1.5,3,5) # varying spatial field
-#range <- 3
-sigma.u <- 1
-nsims <- 5 # number of population per spatial field
-
-fake.locations <- matrix(c(0,0,r_width,r_height,0,r_height,r_width,0), nrow=4, byrow=T)
-mesh.sim <- inla.mesh.2d(loc=fake.locations, max.edge=c(0.4, 2))
-# simulate field  
-spde <- inla.spde2.pcmatern(mesh.sim, prior.range=c(.5, .5), prior.sigma=c(.5, .5))
-# simulate data at locations
-loc.data <- as.matrix(expand.grid(seq(0, r_width, .1), seq(0, r_height, .1))) + .1
-n <- nrow(loc.data)
-# create a raster covering the study area
-r <- raster(nrows=r_height, ncols=r_width, xmn=0, xmx=r_width, ymn=0, ymx=r_height, resolution=.1, crs=NULL)
-loc.data <- coordinates(r)
-n <- nrow(loc.data)
-
-
-# storage
-simdata <- vector(mode="list", length=nsims)
-
-# looping
-for (range in ranges){ # loop and vary spatial range
-  print(paste0("Range: ", range))
-  print(" Simulations")
-
-  for (s in 1:nsims){ # loop number of simulated pops
-    print(paste0(" ", s))
-    inla.seed <- s # fix seed per simulation
-    # simulate spatial field
-    Qu <- inla.spde.precision(spde, theta=c(log(range), log(sigma.u)))
-    u <- inla.qsample(n=1, Q=Qu, seed=inla.seed)
-    u <- u[ ,1]
-      
-    # simulate data at locationss
-    loc.data <- as.matrix(expand.grid(seq(0, r_width, .1), seq(0, r_height, .1))) + .1
-    n <- nrow(loc.data)
-    # create a raster covering the study area
-    r <- raster(nrows=r_height, ncols=r_width, xmn=0, xmx=r_width, ymn=0, ymx=r_height, resolution=.1, crs=NULL)
-    loc.data <- coordinates(r)
-    n <- nrow(loc.data)
-    
-    # project spatial field to locations
-    A <- inla.spde.make.A(mesh=mesh.sim, loc=loc.data)
-    u <- drop(A %*% u)
-    
-    # create a covariate
-    x <- runif(n)-0.5 # centred at zero
-    cov_r <- r # create a blank raster
-    values(cov_r) <- x # write in values
-      # plot(cov_r)
-    
-    # construct linear predictor
-    beta <- c(1, 1.5) # true coefficients 
-    
-    lin.pred <- beta[1] + beta[2]*x + u
-    # observation
-    y <- rpois(n, exp(lin.pred))
-    
-    y_rast <- r # store pop as raster
-    values(y_rast) <- y
-    
-    # derive settlement "types" from population
-    sett <- make_settlement(y_rast)
-  
-    simdata[[s]] <- list("pop"=y_rast, "cov"=cov_r, "sett"=sett)
-  } # end pop simulation loop
-  # save simulation outputs
-  saveRDS(simdata, file=paste0("./out_sim/sim_surface_", range,".rds"))
-} # end loop over range values
-
-
-
-
-
 
 
 
