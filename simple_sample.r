@@ -127,10 +127,10 @@ strat2 <- raster(strat2, xmn=0, xmx=20, ymn=0, ymx=20)
 
 
 ## loop to build synthetic populations ##
-
+# set up values
 ranges <-  c(1.5,3,5) # varying spatial field
 #range <- 3
-sigma.u <- 1.5
+sigma.u <- 1
 nsims <- 5 # number of population per spatial field
 
 fake.locations <- matrix(c(0,0,r_width,r_height,0,r_height,r_width,0), nrow=4, byrow=T)
@@ -195,10 +195,11 @@ for (range in ranges){ # loop and vary spatial range
   
     simdata[[s]] <- list("pop"=y_rast, "cov"=cov_r, "sett"=sett)
   } # end pop simulation loop
+  # save simulation outputs
+  saveRDS(simdata, file=paste0("./out_sim/sim_surface_", range,".rds"))
 } # end loop over range values
 
-# save simulation outputs
-saveRDS(simdata, file="")
+
 
 
 
