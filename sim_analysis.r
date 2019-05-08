@@ -36,10 +36,20 @@ sampleszs <- c(50, 100, 150, 200) # range of sample sizes
 # get list of simulated surfaces
 sim_files <- list.files("./out_sim", pattern=glob2rx("sim_surface_*.rds"), recursive=FALSE, full.names=TRUE)
 # set up storage for results
-all_outputs <- matrix(NA,
-                      nrow=length(sim_files) * 50 * nsamples * 5 * length(sampleszs) * 4, # files x fields x draws x sample tech x sizes x models
-                      ncol=10,
-                      dimnames=list(NULL,c("field","surface","sample","samp_type","size","model","rmse","mape","perc_cov","pr2")))
+out_length <- length(sim_files) * 50 * nsamples * 5 * length(sampleszs) * 4 # files x fields x draws x sample tech x sizes x models
+
+all_outputs <- data.frame(field=vector("numeric", length=out_length),
+                          surface=vector("numeric", length=out_length),
+                          sample=vector("numeric", length=out_length),
+                          samp_type=vector("character", length=out_length),
+                          size=vector("numeric", length=out_length),
+                          model=vector("character", length=out_length),
+                          rmse=vector("numeric", length=out_length),
+                          mape=vector("numeric", length=out_length),
+                          perc_cov=vector("numeric", length=out_length),
+                          pr2=vector("numeric", length=out_length),
+                          stringsAsFactors=F
+                         )
 
 
 ## Main processing loop ##
