@@ -37,7 +37,7 @@ sampleszs <- c(50, 100, 150, 200) # range of sample sizes
 sim_files <- list.files("./out_sim", pattern=glob2rx("sim_surface_*.rds"), recursive=FALSE, full.names=TRUE)
 # set up storage for results
 all_outputs <- matrix(NA,
-                      nrow=length(sim_files) * 50 * nsamples * 5 * length(sampleszs) * 4,
+                      nrow=length(sim_files) * 50 * nsamples * 5 * length(sampleszs) * 4, # files x fields x draws x sample tech x sizes x models
                       ncol=10,
                       dimnames=list(NULL,c("field","surface","sample","samp_type","size","model","rmse","mape","perc_cov","pr2")))
 
@@ -81,15 +81,23 @@ for(f in sim_files){
     
     # loop sample size
     for(sz in sampleszs){
+      # repeated samples of different types
       for(sp in 1:nsamples){
         # simple random sample
-      
-        all_outputs[r,]
+        srs <- sample(1:nrow(obs), size=sz, replace=F)
+        # extract values
+        srs <- obs[srs,]
+        
+        # apply a simple mean population per pixel
+        obs$mean <- mean(srs$pop)
+        pred$mean <- mean(srs$pop)
+        # store results
+        all_outputs[r,1:6] <- c(truerange, s, sp, "srs", sz, "mean")
         r <- r + 1 # increment counter
         
-      } # end multiple draws loop
+      } # end multiple sample draws loop
       
-    } # end sample size loop
+    } # end sample sizes loop
     
   } # end loop of simulated surfaces
   
