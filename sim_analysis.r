@@ -61,13 +61,23 @@ for(f in sim_files){
     # create the domain dataset
     domain <- as.data.frame(truepop, xy=TRUE)
     names(domain)[3] <- "pop"
+    # make cell numbers for linking to other grids
+    domain$cnum <- cellFromXY(truepop, domain[,c("x","y")])
     # extract other values
     domain$sett <- extract(sett, domain[,c("x","y")])
     domain$cov <- extract(cov, domain[,c("x","y")])
     # get region information
     domain$adm1 <- extract(strat1, domain[,c("x","y")])
     domain$adm2 <- extract(strat2, domain[,c("x","y")])
+    # exclude areas with no population
+    domain <- domain[domain$pop > 0,]
     
+    # split domain into obs/pred
+    obs <- domain[domain$x<10,]
+    pred <- domain[domain$x>=10,]
+    # get aggregate population totals
+    totobspop <- sum(obs$pop)
+    totpredpop <- sum(pred$pop)
     
     # loop sample size
     for(sz in sampleszs){
