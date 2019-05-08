@@ -1,6 +1,6 @@
 # 
 # Analysis code for simulated population surfaces
-# sim_analysis.
+# sim_analysis.r
 #
 #
 # Author: Chris Jochem (W.C.Jochem@soton.ac.uk)
@@ -18,7 +18,7 @@ r_width <- 20
 r_height <- 20
 # create spatial units 
 # make 5 horizontal strata (naive stratification for comparison)
-# see: https://gis.stackexchange.com/questions/34895/create-zonal-grid-in-
+# see: https://gis.stackexchange.com/questions/34895/create-zonal-grid-in-r
 rows <- 50; cols <- 200; n <- 200
 strat1 <- outer(1:n, 1:n, 
                function(i,j) (i-1) %/% rows * ((n+1) %/% cols) + (j-1) %/% cols + 1)
@@ -38,8 +38,10 @@ sim_files <- list.files("./out_sim", pattern=glob2rx("sim_surface_*.rds"), recur
 # set up storage for results
 all_outputs <- matrix(NA,
                       nrow=length(sim_files) * 50 * nsamples * 5 * length(sampleszs) * 4,
-                      ncol=10)
-counter <- 1 # index to store the results
+                      ncol=10,
+                      dimnames=list(NULL,c("field","surface","sample","samp_type","size","model","rmse","mape","perc_cov","pr2")))
+
+r <- 1 # index to store the results
 # loop and load all files
 for(f in sim_files){
   print(f)
@@ -56,8 +58,13 @@ for(f in sim_files){
     
     # loop sample size
     for(sz in sampleszs){
-      # simple random sample
+      for(sp in 1:nsamples){
+        # simple random sample
       
+        all_outputs[r,]
+        r <- r + 1 # increment counter
+        
+      } # end multiple draws loop
       
     } # end sample size loop
     
