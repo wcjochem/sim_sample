@@ -7,6 +7,7 @@
 #
 
 library(INLA)
+library(Metrics)
 
 
 rm(list=ls())
@@ -44,10 +45,14 @@ all_outputs <- data.frame(field=vector("numeric", length=out_length),
                           samp_type=vector("character", length=out_length),
                           size=vector("numeric", length=out_length),
                           model=vector("character", length=out_length),
-                          rmse=vector("numeric", length=out_length),
-                          mape=vector("numeric", length=out_length),
-                          perc_cov=vector("numeric", length=out_length),
-                          pr2=vector("numeric", length=out_length),
+                          rmse_a=vector("numeric", length=out_length), # _a are within sample area predictions
+                          mape_a=vector("numeric", length=out_length),
+                          pctcov_a=vector("numeric", length=out_length),
+                          pr2_a=vector("numeric", length=out_length),
+                          rmse_b=vector("numeric", length=out_length), # _b are out-of-sample predictions
+                          mape_b=vector("numeric", length=out_length),
+                          pctcov_b=vector("numeric", length=out_length),
+                          pr2_b=vector("numeric", length=out_length),
                           stringsAsFactors=F
                          )
 
@@ -98,12 +103,18 @@ for(f in sim_files){
         # extract values
         srs <- obs[srs,]
         
-        # apply a simple mean population per pixel
+        # simple mean population per pixel
         obs$mean <- mean(srs$pop)
         pred$mean <- mean(srs$pop)
         # store results
-        all_outputs[r,1:6] <- c(truerange, s, sp, "srs", sz, "mean")
+        all_outputs[r, c("field","surface","sample","size")] <- c(truerange, s, sp, sz)
+        all_outputs[r, c("samp_type", "model")] <- c("srs","mean")
+        all_outputs[r, c("rmse_a","mape_a","pctcov_a","pr2_a")] <- c(rmse(obs$pop, obs$mean), mape(obs$pop, obs$mean), NA, cor(obs$pop, obs$mean)^2)
+        all_outputs[r, c("rmse_b","mape_b","pctcov_b","pr2_b")] <- c(rmse(pred$pop, pred$mean), mape(pred$pop, pred$mean), NA, cor(pred$pop, pred$mean)^2)
         r <- r + 1 # increment counter
+        
+        # geostatistical model
+        
         
       } # end multiple sample draws loop
       
