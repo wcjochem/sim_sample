@@ -41,6 +41,8 @@ all_outputs <- matrix(NA,
                       ncol=10,
                       dimnames=list(NULL,c("field","surface","sample","samp_type","size","model","rmse","mape","perc_cov","pr2")))
 
+
+## Main processing loop ##
 r <- 1 # index to store the results
 # loop and load all files
 for(f in sim_files){
@@ -55,6 +57,17 @@ for(f in sim_files){
     truepop <- sim_surfaces[[s]]$pop
     sett <- sim_surfaces[[s]]$sett
     cov <- sim_surfaces[[s]]$cov
+    
+    # create the domain dataset
+    domain <- as.data.frame(truepop, xy=TRUE)
+    names(domain)[3] <- "pop"
+    # extract other values
+    domain$sett <- extract(sett, domain[,c("x","y")])
+    domain$cov <- extract(cov, domain[,c("x","y")])
+    # get region information
+    domain$adm1 <- extract(strat1, domain[,c("x","y")])
+    domain$adm2 <- extract(strat2, domain[,c("x","y")])
+    
     
     # loop sample size
     for(sz in sampleszs){
