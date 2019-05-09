@@ -7,12 +7,13 @@
 # Author: Chris Jochem (W.C.Jochem@soton.ac.uk)
 #
 
+
 # Model-based geostatistics
 mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
   # spde - spatial prior
   spde <- inla.spde2.pcmatern(mesh, prior.range=c(10, .9), prior.sigma=c(.5, .5))
   # components
-  form <- pop ~ -1 + Intercept + cov + f(field, model=spde)
+  form <- pop ~ -1 + Intercept + cov + sett + f(field, model=spde)
   c.c <- list(cpo=TRUE, dic=TRUE, waic=TRUE, config=TRUE)
   # set up model
   A.est <- inla.spde.make.A(mesh=mesh,
@@ -32,19 +33,26 @@ mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
                                         list(samp[,c("cov","sett")]) ),
                           tag='est')
 
-  stack.pred <- inla.stack(data=list(pop=NA),
-                           A=list(A.pred, 1),
-                           effects=list( c(mesh.index0, list(Intercept=1)),
-                                         list(pred[,c("cov","sett")]) ),
-                           tag='pred')
+  # stack.pred_in <- inla.stack(data=list(pop=NA),
+  #                             A=list(A.pred_in, 1),
+  #                             effects=list( c(mesh.index0, list(Intercept=1)),
+  #                                           list(pred_in[,c("cov","sett")]) ),
+  #                             tag='pred_in')
+  # 
+  # stack.pred_out <- inla.stack(data=list(pop=NA),
+  #                              A=list(A.pred_out, 1),
+  #                              effects=list( c(mesh.index0, list(Intercept=1)),
+  #                                            list(pred_out[,c("cov","sett")]) ),
+  #                              tag='pred_out')
+    
   # create unified stack with tags
-  stack.all <- inla.stack(stack.est, stack.pred)
+  # stack.all <- inla.stack(stack.est, stack.pred)
   # fit model
   fit <- tryCatch({
       inla(form, 
            family="poisson",
-           data=inla.stack.data(stack.all),
-           control.predictor=list(A=inla.stack.A(stack.all), compute=T, link=1),
+           data=inla.stack.data(stack.est),
+           control.predictor=list(A=inla.stack.A(stack.est), compute=T, link=1),
            control.compute=c.c, verbose=F)
     },
     error=function(e){
@@ -55,13 +63,30 @@ mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
   if(is.null(fit)){
     predvals <- NA
   } else{
+    # predictions
+    nsamp <- 1e4
+    # draw samples from the posterior
+    ps <- inla.posterior.sample(n=nsamp, fit)
+    # get indices to the effects
+    contents <- fit$misc$configs$contents
     
-    # summary(fit)
-    # get IDs of the test set
-    idx.pred <- inla.stack.index(stack.all, "pred")$data
-    # extract fitted values - posterior median of response
-    # predvals <- exp(fit$summary.fitted.values[idx.pred, c("0.5quant")])
-    predvals <- fit$summary.fitted.values[idx.pred, c("0.5quant")]
+    idSpace <- contents$start[which(contents$tag=="field")]-1 + (1:contents$length[which(contents$tag=="field")])
+    idX <- contents$start[which(contents$tag=="Intercept")]-1 + (1:3) # fixed effects, change for covariates
+    # extract samples
+    xLatent <- matrix(0, nrow=length(ps[[1]]$latent), ncol=nsamp)
+    for(i in 1:nsamp){
+      xLatent[,i] <- ps[[i]]$latent
+    }
+    xSpace <- xLatent[idSpace,]
+    xX <- xLatent[idX,]
+    
+    # construct predictions
+    # within sample area
+    linpred <- as.matrix(A.pred_in %*% xSpace + as.matrix(cbind(1, pred_in[,c("cov","sett")])) %*% xX)
+    pred_N_in <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
+    # outside sample area
+    linpred <- as.matrix(A.pred_out %*% xSpace + as.matrix(cbind(1, pred_out[,c("cov","sett")])) %*% xX)
+    pred_N_out <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
   }
   ## return
   return(list("predvals"=predvals, "fittedmod"=fit))
