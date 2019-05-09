@@ -13,7 +13,7 @@ mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
   # spde - spatial prior
   spde <- inla.spde2.pcmatern(mesh, prior.range=c(10, .9), prior.sigma=c(.5, .5))
   # components
-  form <- pop ~ -1 + Intercept + cov + f(sett, model="iid") + f(field, model=spde)
+  form <- pop ~ -1 + Intercept + cov + f(sett, model="iid", values=1:5) + f(field, model=spde)
   c.c <- list(cpo=TRUE, dic=TRUE, waic=TRUE, config=TRUE)
   # set up model
   A.est <- inla.spde.make.A(mesh=mesh,
@@ -53,7 +53,7 @@ mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
            family="poisson",
            data=inla.stack.data(stack.est),
            control.predictor=list(A=inla.stack.A(stack.est), compute=T, link=1),
-           control.compute=c.c, verbose=F)
+           control.compute=c.c, verbose=T)
     },
     error=function(e){
       NULL
@@ -75,8 +75,10 @@ mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
     idX <- contents$start[which(contents$tag=="Intercept")]-1 + (1:2) # fixed effects, change for covariates
     # extract samples
     xLatent <- matrix(0, nrow=length(ps[[1]]$latent), ncol=nsamp)
+    xHyper <- matrix(0, nrow=length(ps[[1]]$hyperpar), ncol=nsamp)
     for(i in 1:nsamp){
       xLatent[,i] <- ps[[i]]$latent
+      xHyper[,i] <- ps[[i]]$hyperpar
     }
     xSpace <- xLatent[idSpace,]
     xSett <- xLatent[idSett,]
