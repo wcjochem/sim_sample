@@ -13,7 +13,7 @@ mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
   # spde - spatial prior
   spde <- inla.spde2.pcmatern(mesh, prior.range=c(10, .9), prior.sigma=c(.5, .5))
   # components
-  form <- pop ~ -1 + Intercept + cov + sett + f(field, model=spde)
+  form <- pop ~ -1 + Intercept + cov + f(sett, model="iid") + f(field, model=spde)
   c.c <- list(cpo=TRUE, dic=TRUE, waic=TRUE, config=TRUE)
   # set up model
   A.est <- inla.spde.make.A(mesh=mesh,
@@ -71,21 +71,23 @@ mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
     contents <- fit$misc$configs$contents
     
     idSpace <- contents$start[which(contents$tag=="field")]-1 + (1:contents$length[which(contents$tag=="field")])
-    idX <- contents$start[which(contents$tag=="Intercept")]-1 + (1:3) # fixed effects, change for covariates
+    idSett <- contents$start[which(contents$tag=="sett")]-1 + (1:contents$length[which(contents$tag=="sett")])
+    idX <- contents$start[which(contents$tag=="Intercept")]-1 + (1:2) # fixed effects, change for covariates
     # extract samples
     xLatent <- matrix(0, nrow=length(ps[[1]]$latent), ncol=nsamp)
     for(i in 1:nsamp){
       xLatent[,i] <- ps[[i]]$latent
     }
     xSpace <- xLatent[idSpace,]
+    xSett <- xLatent[idSett,]
     xX <- xLatent[idX,]
     
     # construct predictions
     # within sample area
-    linpred <- as.matrix(A.pred_in %*% xSpace + as.matrix(cbind(1, pred_in[,c("cov","sett")])) %*% xX)
+    linpred <- as.matrix(A.pred_in %*% xSpace + xSett[pred_in$sett,] + as.matrix(cbind(1, pred_in[,c("cov")])) %*% xX)
     pred_N_in <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
     # outside sample area
-    linpred <- as.matrix(A.pred_out %*% xSpace + as.matrix(cbind(1, pred_out[,c("cov","sett")])) %*% xX)
+    linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred_out$sett,] + as.matrix(cbind(1, pred_out[,c("cov")])) %*% xX)
     pred_N_out <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
   }
   ## return
