@@ -8,7 +8,7 @@
 #
 
 # Model-based geostatistics
-mbg <- function(samp=NULL, pred=NULL, mesh=NULL){
+mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
   # spde - spatial prior
   spde <- inla.spde2.pcmatern(mesh, prior.range=c(10, .9), prior.sigma=c(.5, .5))
   # components
@@ -18,8 +18,11 @@ mbg <- function(samp=NULL, pred=NULL, mesh=NULL){
   A.est <- inla.spde.make.A(mesh=mesh,
                             loc=data.matrix(samp[,c("x","y")]))
   
-  A.pred <- inla.spde.make.A(mesh=mesh,
-                             loc=data.matrix(pred[,c("x","y")]))
+  A.pred_in <- inla.spde.make.A(mesh=mesh,
+                                loc=data.matrix(pred_in[,c("x","y")]))
+  
+  A.pred_out <- inla.spde.make.A(mesh=mesh,
+                                 loc=data.matrix(pred_out[,c("x","y")]))
   # index to the mesh
   mesh.index0 <- inla.spde.make.index(name="field", n.spde=spde$n.spde)
   # data stack for model
