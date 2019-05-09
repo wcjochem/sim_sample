@@ -89,6 +89,6 @@ mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
     pred_N_out <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
   }
   ## return
-  return(list("predvals"=predvals, "fittedmod"=fit))
+  return(list("predN_in"=pred_N_in, "predN_out"=pred_N_out))
   
 }
