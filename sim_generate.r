@@ -38,15 +38,15 @@ local.plot.field <- function(field, mesh, xlim=c(0,10), ylim=c(0,10), ...){
 make_settlement <- function(pop_raster){
   # create blocks of cells
   block_size <- rows <- cols <- 2 # 2x2 blocks
-  nx <- dim(population_raster)[2]
-  ny <- dim(population_raster)[1]
+  nx <- dim(pop_raster)[2]
+  ny <- dim(pop_raster)[1]
   
   blocks <- outer(1:ny, 1:nx, function(i,j) (i-1) %/% rows * ((ny+1) %/% cols) + (j-1) %/% cols + 1)
   block_raster <- raster(blocks, xmn=0, xmx=nx, ymn=0, ymx=ny)
-  extent(block_raster) <- extent(population_raster)
+  extent(block_raster) <- extent(pop_raster)
   
   # population per block 
-  block_pop <- as.data.frame(zonal(population_raster, block_raster, fun='sum'))
+  block_pop <- as.data.frame(zonal(pop_raster, block_raster, fun='sum'))
   block_pop_r <- reclassify(block_raster, block_pop)
   # smoothed 3x3 window
   block_pop_sm <- focal(block_pop_r, w=matrix(1/9,nrow=3,ncol=3))
@@ -66,7 +66,7 @@ make_settlement <- function(pop_raster){
   low_clumps <- clump(blocks_low, directions=8, gaps=F)
     plot(low_clumps)
   # get population per clump
-  clump_pop <- as.data.frame(zonal(population_raster, low_clumps, 'sum'))
+  clump_pop <- as.data.frame(zonal(pop_raster, low_clumps, 'sum'))
   clump_pop$class <- ifelse(clump_pop$sum >= sm_sett, 1, NA)
   # reclassify to create small settlement areas
   small_sett <- reclassify(low_clumps, clump_pop[,c("zone","class")])
@@ -80,7 +80,7 @@ make_settlement <- function(pop_raster){
   # make clumps
   hi_clumps <- clump(blocks_hi, directions=8, gaps=F)
   # get population per clump
-  clump_pop <- as.data.frame(zonal(population_raster, hi_clumps, 'sum'))
+  clump_pop <- as.data.frame(zonal(pop_raster, hi_clumps, 'sum'))
   clump_pop$class <- ifelse(clump_pop$sum >= lg_sett, 2, NA)
   # reclassify to create small settlement areas
   lrg_sett <- reclassify(hi_clumps, clump_pop[,c("zone","class")])
