@@ -13,7 +13,7 @@ mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
   # spde - spatial prior
   spde <- inla.spde2.pcmatern(mesh, prior.range=c(10, .9), prior.sigma=c(.5, .5))
   # components
-  form <- pop ~ -1 + Intercept + cov + f(sett, model="iid") + f(field, model=spde)
+  form <- pop ~ -1 + Intercept + cov + f(sett, model="iid", values=1:3) + f(field, model=spde)
   c.c <- list(cpo=TRUE, dic=TRUE, waic=TRUE, config=TRUE)
   # set up model
   A.est <- inla.spde.make.A(mesh=mesh,
@@ -84,5 +84,4 @@ mbg <- function(samp=NULL, pred_in=NULL, pred_out=NULL, mesh=NULL){
   }
   ## return
   return(list("predN_s"=pred_N_s,"predN_in"=pred_N_in, "predN_out"=pred_N_out))
-  
 }
