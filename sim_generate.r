@@ -66,10 +66,10 @@ make_settlement <- function(pop_raster){
   low_clumps <- clump(blocks_low, directions=8, gaps=F)
   # get population per clump
   clump_pop <- as.data.frame(zonal(pop_raster, low_clumps, 'sum'))
-  clump_pop$class <- ifelse(clump_pop$sum >= sm_sett, 1, NA)
+  clump_pop$class <- ifelse(clump_pop$sum >= sm_sett, 2, NA)
   # reclassify to create small settlement areas
   small_sett <- reclassify(low_clumps, clump_pop[,c("zone","class")])
-  small_sett[is.na(small_sett)] <- 0
+  small_sett[is.na(small_sett)] <- 1
 
   # "high density"
   if(max(values(block_pop_sm),na.rm=T) >= hi_dens){
@@ -81,13 +81,13 @@ make_settlement <- function(pop_raster){
     hi_clumps <- clump(blocks_hi, directions=8, gaps=F)
     # get population per clump
     clump_pop <- as.data.frame(zonal(pop_raster, hi_clumps, 'sum'))
-    clump_pop$class <- ifelse(clump_pop$sum >= lg_sett, 2, NA)
+    clump_pop$class <- ifelse(clump_pop$sum >= lg_sett, 3, NA)
     # reclassify to create small settlement areas
     lrg_sett <- reclassify(hi_clumps, clump_pop[,c("zone","class")])
-    lrg_sett[is.na(lrg_sett)] <- 0
+    lrg_sett[is.na(lrg_sett)] <- 1
   } else{
     lrg_sett <- pop_raster
-    values(lrg_sett) <- 0
+    values(lrg_sett) <- 1
   }
   
   return(max(small_sett, lrg_sett)) # raster
@@ -186,7 +186,7 @@ for (range in ranges){ # loop and vary spatial range
     simdata[[s]] <- list("pop"=y_rast, "cov"=cov_r, "sett"=sett)
   } # end pop simulation loop
   # save simulation outputs locally
-  # saveRDS(simdata, file=paste0("./out_sim/sim_surface_", range,".rds"))
+  saveRDS(simdata, file=paste0("./out_sim/sim_surface_", range,".rds"))
 } # end loop over range values
 
 
