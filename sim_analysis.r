@@ -13,6 +13,9 @@ library(Metrics)
 rm(list=ls())
 set.seed(1126)
 
+# load model fitting code
+source("./GitHub/sim_sample/model_estimate.r")
+
 # set-up
 # construct study area and strata
 r_width <- 20
@@ -32,7 +35,8 @@ strat2 <- raster(strat2, xmn=0, xmx=20, ymn=0, ymx=20)
 
 # create spatial mesh for geostatistical models
 fake.locations <- matrix(c(0,0,r_width,r_height,0,r_height,r_width,0), nrow=4, byrow=T)
-sim_mesh <- inla.mesh.2d(loc=fake.locations, max.edge=c(0.4, 2)) # matches mesh used to generate data
+sim_mesh <- inla.mesh.2d(loc=fake.locations, max.edge=c(1, 4)) # matches mesh used to generate data
+  plot(sim_mesh)
   
 # sampling  
 nsamples <- 100 # number of draws of each size and type
@@ -49,10 +53,12 @@ all_outputs <- data.frame(field=vector("numeric", length=out_length),
                           samp_type=vector("character", length=out_length),
                           size=vector("numeric", length=out_length),
                           model=vector("character", length=out_length),
+                          
                           rmse_a=vector("numeric", length=out_length), # _a are within sample area predictions
                           mape_a=vector("numeric", length=out_length),
                           pctcov_a=vector("numeric", length=out_length),
                           pr2_a=vector("numeric", length=out_length),
+                          
                           rmse_b=vector("numeric", length=out_length), # _b are out-of-sample predictions
                           mape_b=vector("numeric", length=out_length),
                           pctcov_b=vector("numeric", length=out_length),
@@ -118,7 +124,7 @@ for(f in sim_files){
         r <- r + 1 # increment counter
         
         # geostatistical model
-        
+        mbg <- mbg(samp=srs, pred=pred, mesh=sim_mesh)
         
       } # end multiple sample draws loop
       
