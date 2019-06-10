@@ -6,6 +6,7 @@
 # Author: Chris Jochem (W.C.Jochem@soton.ac.uk)
 #
 
+library(raster)
 library(INLA)
 library(Metrics)
 
@@ -165,7 +166,7 @@ for(f in sim_files){
                                                                      cor(pred$pop, res_mbg$predN_out[,2])^2)
         r <- r + 1 # increment counter
         # clean up
-        rm(sampdf, samps, pred_a)
+        rm(sampdf, samps, res_mbg, pred_a)
         
         ## stratified random sample - by type
         
@@ -173,7 +174,8 @@ for(f in sim_files){
         
         
         ## population-weighted sample
-        samps <- sample(1:nrow(obs), size=sz, replace=F, prob=obs$pop)
+        wts <- obs$pop/sum(obs$pop)
+        samps <- sample(1:nrow(obs), size=sz, replace=F, prob=wts)
         # extract values
         sampdf <- obs[samps,]
         pred_a <- obs[-samps,] # in-domain predictions
@@ -196,7 +198,7 @@ for(f in sim_files){
         # r <- r + 1 # increment counter
         
         # geostatistical model
-        res_mbg <- mbg(samp=sampdf, pred_in=pred_a, pred_out=pred, mesh=sim_mesh)
+        res_wmbg <- wmbg(samp=sampdf, pred_in=pred_a, pred_out=pred, mesh=sim_mesh, wgts=(sz*(sampdf$pop/sum(sampdf$pop))))
         # store results
         all_outputs[r, c("field","surface","sample","size")] <- c(truerange, s, sp, sz)
         all_outputs[r, c("samp_type", "model")] <- c("srs","mbg")
@@ -218,7 +220,7 @@ for(f in sim_files){
                                                                      cor(pred$pop, res_mbg$predN_out[,2])^2)
         r <- r + 1 # increment counter
         # clean up
-        rm(sampdf, samps, pred_a)
+        rm(sampdf, samps, pred_a, res_mbg)
         
         
       } # end multiple sample draws loop
