@@ -6,6 +6,7 @@
 # Author: Chris Jochem (W.C.Jochem@soton.ac.uk)
 #
 
+library(raster)
 library(INLA)
 library(Metrics)
 
@@ -40,7 +41,7 @@ sim_mesh <- inla.mesh.2d(loc=fake.locations, max.edge=c(1, 4))
   
 # sampling  
 nsamples <- 20 # number of draws of each size and type
-sampleszs <- c(25, 50, 100, 150, 200) # range of sample sizes
+sampleszs <- c(20, 50, 100, 150, 200) # range of sample sizes
 
 # get list of simulated surfaces
 sim_files <- list.files("./out_sim", pattern=glob2rx("sim_surface_*.rds"), recursive=FALSE, full.names=TRUE)
@@ -122,38 +123,37 @@ for(f in sim_files){
         ## simple random sample
         samps <- sample(1:nrow(obs), size=sz, replace=F)
         # extract values
-        srs <- obs[samps,]
+        sampdf <- obs[samps,]
         pred_a <- obs[-samps,] # in-domain predictions
         
         # simple mean population per pixel
-        pred_a$mean <- mean(srs$pop)
-        pred$mean <- mean(srs$pop)
+        pred_a$mean <- mean(sampdf$pop)
+        pred$mean <- mean(sampdf$pop)
         # store results
         all_outputs[r, c("field","surface","sample","size")] <- c(truerange, s, sp, sz)
         all_outputs[r, c("samp_type", "model")] <- c("srs","mean")
-        all_outputs[r, c("total_s","total_a","total_b")] <- c(mean(srs$pop)*nrow(srs), sum(pred_a$mean), sum(pred$mean))
-        all_outputs[r, c("rmse_s","mape_s","pctcov_s","pr2_s")] <- c(rmse(srs$pop, mean(srs$pop)), mape(srs$pop, mean(srs$pop)), NA, NA)
+        all_outputs[r, c("total_s","total_a","total_b")] <- c(mean(sampdf$pop)*nrow(sampdf), sum(pred_a$mean), sum(pred$mean))
+        all_outputs[r, c("rmse_s","mape_s","pctcov_s","pr2_s")] <- c(rmse(sampdf$pop, mean(sampdf$pop)), mape(sampdf$pop, mean(sampdf$pop)), NA, NA)
         all_outputs[r, c("rmse_a","mape_a","pctcov_a","pr2_a")] <- c(rmse(pred_a$pop, pred_a$mean), mape(pred_a$pop, pred_a$mean), NA, NA)
         all_outputs[r, c("rmse_b","mape_b","pctcov_b","pr2_b")] <- c(rmse(pred$pop, pred$mean), mape(pred$pop, pred$mean), NA, NA)
-        
         r <- r + 1 # increment counter
         
         # non-spatial, hierarchical model
         # res_mlm <- mlm
         # store results
-        r <- r + 1 # increment counter
+        # r <- r + 1 # increment counter
         
         # geostatistical model
-        res_mbg <- mbg(samp=srs, pred_in=pred_a, pred_out=pred, mesh=sim_mesh)
+        res_mbg <- mbg(samp=sampdf, pred_in=pred_a, pred_out=pred, mesh=sim_mesh)
         # store results
         all_outputs[r, c("field","surface","sample","size")] <- c(truerange, s, sp, sz)
         all_outputs[r, c("samp_type", "model")] <- c("srs","mbg")
         all_outputs[r, c("total_s")] <- sum(res_mbg$predN_s[,2])
         all_outputs[r, c("total_a","total_b")] <- c(sum(res_mbg$predN_in[,2]), sum(res_mbg$predN_out[,2]))
-        all_outputs[r, c("rmse_s","mape_s","pctcov_s","pr2_s")] <- c(rmse(srs$pop, res_mbg$predN_s[,2]),
-                                                                     mape(srs$pop, res_mbg$predN_s[,2]),
-                                                                     mean(srs$pop >= res_mbg$predN_s[,1] & srs$pop <= res_mbg$predN_s[,3])*100,
-                                                                     cor(srs$pop, res_mbg$predN_s[,2])^2)
+        all_outputs[r, c("rmse_s","mape_s","pctcov_s","pr2_s")] <- c(rmse(sampdf$pop, res_mbg$predN_s[,2]),
+                                                                     mape(sampdf$pop, res_mbg$predN_s[,2]),
+                                                                     mean(sampdf$pop >= res_mbg$predN_s[,1] & sampdf$pop <= res_mbg$predN_s[,3])*100,
+                                                                     cor(sampdf$pop, res_mbg$predN_s[,2])^2)
         
         all_outputs[r, c("rmse_a","mape_a","pctcov_a","pr2_a")] <- c(rmse(pred_a$pop, res_mbg$predN_in[,2]), 
                                                                      mape(pred_a$pop, res_mbg$predN_in[,2]), 
@@ -165,14 +165,62 @@ for(f in sim_files){
                                                                      mean(pred$pop >= res_mbg$predN_out[,1] & pred$pop <= res_mbg$predN_out[,3])*100, # pct covered
                                                                      cor(pred$pop, res_mbg$predN_out[,2])^2)
         r <- r + 1 # increment counter
-        
+        # clean up
+        rm(sampdf, samps, res_mbg, pred_a)
         
         ## stratified random sample - by type
         
-        ## stratified random smaple - by admin unit
+        ## stratified random smaple - by admin 1 
+        
         
         ## population-weighted sample
+        wts <- obs$pop/sum(obs$pop)
+        samps <- sample(1:nrow(obs), size=sz, replace=F, prob=wts)
+        # extract values
+        sampdf <- obs[samps,]
+        pred_a <- obs[-samps,] # in-domain predictions
         
+        # simple mean population per pixel
+        pred_a$mean <- mean(sampdf$pop)
+        pred$mean <- mean(sampdf$pop)
+        # store results
+        all_outputs[r, c("field","surface","sample","size")] <- c(truerange, s, sp, sz)
+        all_outputs[r, c("samp_type", "model")] <- c("pwgt","mean")
+        all_outputs[r, c("total_s","total_a","total_b")] <- c(mean(sampdf$pop)*nrow(sampdf), sum(pred_a$mean), sum(pred$mean))
+        all_outputs[r, c("rmse_s","mape_s","pctcov_s","pr2_s")] <- c(rmse(sampdf$pop, mean(sampdf$pop)), mape(sampdf$pop, mean(sampdf$pop)), NA, NA)
+        all_outputs[r, c("rmse_a","mape_a","pctcov_a","pr2_a")] <- c(rmse(pred_a$pop, pred_a$mean), mape(pred_a$pop, pred_a$mean), NA, NA)
+        all_outputs[r, c("rmse_b","mape_b","pctcov_b","pr2_b")] <- c(rmse(pred$pop, pred$mean), mape(pred$pop, pred$mean), NA, NA)
+        r <- r + 1 # increment counter
+        
+        # non-spatial, hierarchical model
+        # res_mlm <- mlm
+        # store results
+        # r <- r + 1 # increment counter
+        
+        # geostatistical model
+        res_wmbg <- wmbg(samp=sampdf, pred_in=pred_a, pred_out=pred, mesh=sim_mesh, wgts=(sz*(sampdf$pop/sum(sampdf$pop))))
+        # store results
+        all_outputs[r, c("field","surface","sample","size")] <- c(truerange, s, sp, sz)
+        all_outputs[r, c("samp_type", "model")] <- c("srs","mbg")
+        all_outputs[r, c("total_s")] <- sum(res_mbg$predN_s[,2])
+        all_outputs[r, c("total_a","total_b")] <- c(sum(res_mbg$predN_in[,2]), sum(res_mbg$predN_out[,2]))
+        all_outputs[r, c("rmse_s","mape_s","pctcov_s","pr2_s")] <- c(rmse(sampdf$pop, res_mbg$predN_s[,2]),
+                                                                     mape(sampdf$pop, res_mbg$predN_s[,2]),
+                                                                     mean(sampdf$pop >= res_mbg$predN_s[,1] & sampdf$pop <= res_mbg$predN_s[,3])*100,
+                                                                     cor(sampdf$pop, res_mbg$predN_s[,2])^2)
+        
+        all_outputs[r, c("rmse_a","mape_a","pctcov_a","pr2_a")] <- c(rmse(pred_a$pop, res_mbg$predN_in[,2]), 
+                                                                     mape(pred_a$pop, res_mbg$predN_in[,2]), 
+                                                                     mean(pred_a$pop >= res_mbg$predN_in[,1] & pred_a$pop <= res_mbg$predN_in[,3])*100, # pct covered
+                                                                     cor(pred_a$pop, res_mbg$predN_in[,2])^2)
+        
+        all_outputs[r, c("rmse_b","mape_b","pctcov_b","pr2_b")] <- c(rmse(pred$pop, res_mbg$predN_out[,2]), 
+                                                                     mape(pred$pop, res_mbg$predN_out[,2]), 
+                                                                     mean(pred$pop >= res_mbg$predN_out[,1] & pred$pop <= res_mbg$predN_out[,3])*100, # pct covered
+                                                                     cor(pred$pop, res_mbg$predN_out[,2])^2)
+        r <- r + 1 # increment counter
+        # clean up
+        rm(sampdf, samps, pred_a, res_mbg)
         
         
       } # end multiple sample draws loop

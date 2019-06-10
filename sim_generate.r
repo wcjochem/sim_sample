@@ -147,6 +147,13 @@ for (range in ranges){ # loop and vary spatial range
   for (s in 1:nsims){ # loop number of simulated pops
     print(paste0(" ", s))
     inla.seed <- s # fix seed per simulation
+    
+    # simulate admin-level 1 random effect
+    rand_eff <- rnorm(length(unique(values(strat1))), 0, 1)
+    # reclassification matrix
+    m <- matrix(c(unique(values(strat1)), rand_eff), ncol=2, byrow=F)
+    admin1 <- reclassify(strat1, m)
+    
     # simulate spatial field
     Qu <- inla.spde.precision(spde, theta=c(log(range), log(sigma.u)))
     u <- inla.qsample(n=1, Q=Qu, seed=inla.seed)
@@ -173,7 +180,7 @@ for (range in ranges){ # loop and vary spatial range
     # construct linear predictor
     beta <- c(1, 1.5) # true coefficients 
     
-    lin.pred <- beta[1] + beta[2]*x + u
+    lin.pred <- beta[1] + beta[2]*x + u #+ values(admin1)
     # observation
     y <- rpois(n, exp(lin.pred))
     
