@@ -39,7 +39,7 @@ sim_mesh <- inla.mesh.2d(loc=fake.locations, max.edge=c(1, 4))
   plot(sim_mesh, main="")
   
 # sampling  
-nsamples <- 100 # number of draws of each size and type
+nsamples <- 20 # number of draws of each size and type
 sampleszs <- c(25, 50, 100, 150, 200) # range of sample sizes
 
 # get list of simulated surfaces
@@ -115,9 +115,10 @@ for(f in sim_files){
     
     # loop sample size
     for(sz in sampleszs){
+      print(sz)
       # repeated samples of different types
       for(sp in 1:nsamples){
-        
+        set.seed(sp)
         ## simple random sample
         samps <- sample(1:nrow(obs), size=sz, replace=F)
         # extract values
@@ -138,7 +139,7 @@ for(f in sim_files){
         r <- r + 1 # increment counter
         
         # non-spatial, hierarchical model
-        res_mlm <- mlm
+        # res_mlm <- mlm
         # store results
         r <- r + 1 # increment counter
         
@@ -181,3 +182,18 @@ for(f in sim_files){
   } # end loop of simulated surfaces
   
 } # end loop of files
+print(Sys.time())
+
+
+library(ggplot2)
+outdf <- all_outputs[all_outputs$field>0,]
+
+ggplot(data=outdf, aes(x=as.factor(size), y=total_s + total_a, fill=as.factor(model))) +
+  geom_boxplot() +
+  facet_wrap(~field) +
+  ggtitle("Total Population - in domain") +
+  ylab("Est. Population") +
+  xlab("Sample size") +
+  labs(fill = "Model") +
+  # geom_hline(aes(yintercept=107053), col="red", show.legend=F) +
+  theme_bw()
