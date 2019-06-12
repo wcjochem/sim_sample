@@ -167,6 +167,7 @@ obs[is.na(obs$bal), "bal"] <- FALSE
 # Model Fitting
 #####
 c.c <- list(cpo=TRUE, dic=TRUE, waic=TRUE, config=TRUE)
+nsamp <- 1e3 # number of samples for predictions
 # create spatial mesh for geostatistical models
 fake.locations <- matrix(c(0,0,r_width,r_height,0,r_height,r_width,0), nrow=4, byrow=T)
 sim_mesh <- inla.mesh.2d(loc=fake.locations, max.edge=c(1, 4)) 
@@ -176,10 +177,10 @@ spde <- inla.spde2.pcmatern(sim_mesh, prior.range=c(10, .9), prior.sigma=c(.5, .
 
 
 
-## Simple Random Sample ##
-# Geostats model - Fixed Intercept
+### Simple Random Sample ###
 dat <- obs[obs$srs==T,]
 pred_a <- obs[obs$srs==F,]
+## Geostats model - Fixed Intercept
 # set up model
 A.est <- inla.spde.make.A(mesh=sim_mesh,
                           loc=data.matrix(dat[,c("x","y")]))
@@ -199,7 +200,7 @@ stack.est <- inla.stack(data=list(pop=dat$pop),
                         effects=list( c(mesh.index0, list(Intercept=1)),
                                       list(dat[,c("cov","sett")]) ),
                         tag='est')
-#
+# fit model
 form <- pop ~ -1 + Intercept + cov + f(sett, model="iid", values=1:3) + f(field, model=spde)
 
 res <- inla(form, 
@@ -207,12 +208,45 @@ res <- inla(form,
            data=inla.stack.data(stack.est),
            control.predictor=list(A=inla.stack.A(stack.est), compute=T, link=1),
            control.compute=c.c) 
+# prediction
+# draw samples from the posterior
+ps <- inla.posterior.sample(n=nsamp, res)
+# get indices to the effects
+contents <- res$misc$configs$contents
 
-# Non-spatial - Random Intercept
+idSpace <- contents$start[which(contents$tag=="field")]-1 + (1:contents$length[which(contents$tag=="field")])
+idSett <- contents$start[which(contents$tag=="sett")]-1 + (1:contents$length[which(contents$tag=="sett")])
+idX <- contents$start[which(contents$tag=="Intercept")]-1 + (1:2) # fixed effects, change for covariates
+# extract samples
+xLatent <- matrix(0, nrow=length(ps[[1]]$latent), ncol=nsamp)
+xHyper <- matrix(0, nrow=length(ps[[1]]$hyperpar), ncol=nsamp)
+for(i in 1:nsamp){
+  xLatent[,i] <- ps[[i]]$latent
+  xHyper[,i] <- ps[[i]]$hyperpar
+}
+xSpace <- xLatent[idSpace,]
+xSett <- xLatent[idSett,]
+xX <- xLatent[idX,]
+
+# construct predictions
+# in-sample
+linpred <- as.matrix(A.est %*% xSpace + xSett[dat$sett,] + as.matrix(cbind(1, dat[,c("cov")])) %*% xX)
+pred_N_s <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
+# within sample area
+linpred <- as.matrix(A.pred_in %*% xSpace + xSett[pred_a$sett,] + as.matrix(cbind(1, pred_a[,c("cov")])) %*% xX)
+pred_N_in <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
+# outside sample area
+linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred$sett,] + as.matrix(cbind(1, pred[,c("cov")])) %*% xX)
+pred_N_out <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
+
+  plot()
+
+
+## Non-spatial - Random Intercept
 
 
 
-# Geostats model - Random Intercept
+## Geostats model - Random Intercept
 
 
 
