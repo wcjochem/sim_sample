@@ -166,40 +166,51 @@ obs[is.na(obs$bal), "bal"] <- FALSE
 #####
 # Model Fitting
 #####
+c.c <- list(cpo=TRUE, dic=TRUE, waic=TRUE, config=TRUE)
+# create spatial mesh for geostatistical models
+fake.locations <- matrix(c(0,0,r_width,r_height,0,r_height,r_width,0), nrow=4, byrow=T)
+sim_mesh <- inla.mesh.2d(loc=fake.locations, max.edge=c(1, 4)) 
+  # plot(sim_mesh, main="")
 # spde - spatial prior
-spde <- inla.spde2.pcmatern(mesh, prior.range=c(10, .9), prior.sigma=c(.5, .5))
+spde <- inla.spde2.pcmatern(sim_mesh, prior.range=c(10, .9), prior.sigma=c(.5, .5))
+
+
+
+## Simple Random Sample ##
+# Geostats model - Fixed Intercept
+dat <- obs[obs$srs==T,]
+pred_a <- obs[obs$srs==F,]
 # set up model
-A.est <- inla.spde.make.A(mesh=mesh,
-                          loc=data.matrix(samp[,c("x","y")]))
+A.est <- inla.spde.make.A(mesh=sim_mesh,
+                          loc=data.matrix(dat[,c("x","y")]))
 
-A.pred_in <- inla.spde.make.A(mesh=mesh,
-                              loc=data.matrix(pred_in[,c("x","y")]))
+A.pred_in <- inla.spde.make.A(mesh=sim_mesh,
+                              loc=data.matrix(pred_a[,c("x","y")]))
 
-A.pred_out <- inla.spde.make.A(mesh=mesh,
-                               loc=data.matrix(pred_out[,c("x","y")]))
+A.pred_out <- inla.spde.make.A(mesh=sim_mesh,
+                               loc=data.matrix(pred[,c("x","y")]))
 # index to the mesh
 mesh.index0 <- inla.spde.make.index(name="field", n.spde=spde$n.spde)
 
-c.c <- list(cpo=TRUE, dic=TRUE, waic=TRUE, config=TRUE)
-
-## Simple Random Sample
-dat <- obs[obs$srs==T,]
-pred_a <- obs[obs$srs==F,]
 
 # data stack for model
-stack.est <- inla.stack(data=list(pop=samp$pop),
+stack.est <- inla.stack(data=list(pop=dat$pop),
                         A=list(A.est, 1),
                         effects=list( c(mesh.index0, list(Intercept=1)),
-                                      list(samp[,c("cov","sett")]) ),
+                                      list(dat[,c("cov","sett")]) ),
                         tag='est')
-
-
+#
 form <- pop ~ -1 + Intercept + cov + f(sett, model="iid", values=1:3) + f(field, model=spde)
 
+res <- inla(form, 
+           family="poisson",
+           data=inla.stack.data(stack.est),
+           control.predictor=list(A=inla.stack.A(stack.est), compute=T, link=1),
+           control.compute=c.c) 
 
 # Non-spatial - Random Intercept
 
-# Geostats model - Fixed Intercept
+
 
 # Geostats model - Random Intercept
 
