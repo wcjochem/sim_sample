@@ -123,17 +123,24 @@ srs <- sample(1:nrow(obs), size=sz, replace=F)
 # population weighted
 wts <- (obs$pop/sum(obs$pop))*sz
 pwgt <- sample(1:nrow(obs), size=sz, prob=wts, replace=F)
-# stratified random by type - proportional to area
+
+# stratified random by type
+szs <- trunc(sz / length(unique(obs$sett)))
+sts <- data.frame(stratified(obs, "sett", szs))$rid
+# redistribute other samples randomly
+rem <- sz %% length(unique(obs$sett))
+extra_sts <- sample(obs[!obs$rid %in% sts,"rid"], rem, replace=F)
+sts <- c(sts, extra_sts) # combine
 
 # systematic random by admin2
 szs <- trunc(sz / length(unique(obs$adm2)))
 sys <- data.frame(stratified(obs, "adm2", szs))$rid
 # redistribute other samples randomly
 rem <- sz %% length(unique(obs$adm2))
-# get blocks
+# randomly select blocks
 extra_adm <- sample(unique(obs$adm2), size=rem, replace=F)
 # sample a pixel within admin unit
-extra <- data.frame(stratified(obs[-sys,], "adm2", 1, select=list(adm2=extra_adm)))$rid
+extra <- data.frame(stratified(obs[!obs$rid %in% sys,], "adm2", 1, select=list(adm2=extra_adm)))$rid
 sys <- c(sys,extra) # combine
 
 # spatially-balanced
@@ -144,9 +151,10 @@ bs <- lcube(prob=wts,
            )
 
 # set samples
-obs[srs,"srs"] <- TRUE
+obs[srs, "srs"] <- TRUE
 obs[pwgt, "pwt"] <- TRUE
-obs[bs,"bal"] <- TRUE
+obs[sys, "sys"] <- TRUE
+obs[bs, "bal"] <- TRUE
 
 sampdf <- obs[samps,]
 pred_a <- obs[-samps,] # in-domain predictions
