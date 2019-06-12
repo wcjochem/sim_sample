@@ -152,13 +152,56 @@ bs <- lcube(prob=wts,
 
 # set samples
 obs[srs, "srs"] <- TRUE
+obs[is.na(obs$srs),"srs"] <- FALSE
 obs[pwgt, "pwt"] <- TRUE
-obs[sys, "sys"] <- TRUE
+obs[is.na(obs$pwt), "pwt"] <- FALSE
+obs[obs$rid %in% sts, "sts"] <- TRUE
+obs[is.na(obs$sts), "sts"] <- FALSE
+obs[obs$rid %in% sys, "sys"] <- TRUE
+obs[is.na(obs$sys), "sys"] <- FALSE
 obs[bs, "bal"] <- TRUE
+obs[is.na(obs$bal), "bal"] <- FALSE
 
-sampdf <- obs[samps,]
-pred_a <- obs[-samps,] # in-domain predictions
 
+#####
+# Model Fitting
+#####
+# spde - spatial prior
+spde <- inla.spde2.pcmatern(mesh, prior.range=c(10, .9), prior.sigma=c(.5, .5))
+# set up model
+A.est <- inla.spde.make.A(mesh=mesh,
+                          loc=data.matrix(samp[,c("x","y")]))
+
+A.pred_in <- inla.spde.make.A(mesh=mesh,
+                              loc=data.matrix(pred_in[,c("x","y")]))
+
+A.pred_out <- inla.spde.make.A(mesh=mesh,
+                               loc=data.matrix(pred_out[,c("x","y")]))
+# index to the mesh
+mesh.index0 <- inla.spde.make.index(name="field", n.spde=spde$n.spde)
+
+c.c <- list(cpo=TRUE, dic=TRUE, waic=TRUE, config=TRUE)
+
+## Simple Random Sample
+dat <- obs[obs$srs==T,]
+pred_a <- obs[obs$srs==F,]
+
+# data stack for model
+stack.est <- inla.stack(data=list(pop=samp$pop),
+                        A=list(A.est, 1),
+                        effects=list( c(mesh.index0, list(Intercept=1)),
+                                      list(samp[,c("cov","sett")]) ),
+                        tag='est')
+
+
+form <- pop ~ -1 + Intercept + cov + f(sett, model="iid", values=1:3) + f(field, model=spde)
+
+
+# Non-spatial - Random Intercept
+
+# Geostats model - Fixed Intercept
+
+# Geostats model - Random Intercept
 
 
 
