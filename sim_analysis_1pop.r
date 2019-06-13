@@ -195,6 +195,7 @@ spde <- inla.spde2.pcmatern(sim_mesh, prior.range=c(10, .9), prior.sigma=c(.5, .
 
 dat <- obs[obs$srs==T,]
 pred_a <- obs[obs$srs==F,]
+pred_b <- pred # clean copy
 ## Geostats model - Fixed Intercept
 # set up model
 A.est <- inla.spde.make.A(mesh=sim_mesh,
@@ -204,7 +205,7 @@ A.pred_in <- inla.spde.make.A(mesh=sim_mesh,
                               loc=data.matrix(pred_a[,c("x","y")]))
 
 A.pred_out <- inla.spde.make.A(mesh=sim_mesh,
-                               loc=data.matrix(pred[,c("x","y")]))
+                               loc=data.matrix(pred_b[,c("x","y")]))
 # index to the mesh
 mesh.index0 <- inla.spde.make.index(name="field", n.spde=spde$n.spde)
 
@@ -256,8 +257,9 @@ allpred_a <- rbind(allpred_a, cbind(pred_a, linpred))
 pred_N_in <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
 names(pred_N_in) <- c("lower","median","upper")
 # outside sample area
-linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred$sett,] + as.matrix(cbind(1, pred[,c("cov")])) %*% xX)
+linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred_b$sett,] + as.matrix(cbind(1, pred_b[,c("cov")])) %*% xX)
   quantile(apply(linpred, 2, FUN=sum), probs=c(0.025, 0.5, 0.975))
+pred_b <- cbind(pred_b, linpred)
 pred_N_out <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
 names(pred_N_out) <- c("lower","median","upper")
 
@@ -277,7 +279,7 @@ obspredplot(plotdat)
 
 # plot: obs vs. pred out of domain
 plotdat <- pred_N_out
-plotdat$obs <- pred$pop
+plotdat$obs <- pred_b$pop
 plotdat$pred <- plotdat$median
 
 obspredplot(plotdat)
