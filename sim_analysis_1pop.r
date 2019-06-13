@@ -17,9 +17,9 @@ rm(list=ls())
 set.seed(1126)
 
 # helper functions
-obspredplot <- function(plotdat){ # needs lower, median, upper, obs, pred fields
+obspredplot <- function(plotdat, titlestr=""){ # needs lower, median, upper, obs, pred fields
   plot(NA,
-     main=paste('Population Density \n(r2 =',round(cor(plotdat$pred, plotdat$obs)^2,2),')'),
+     main=paste(titlestr, ': Population Density \n(r2 =',round(cor(plotdat$pred, plotdat$obs)^2,2),')'),
      ylim=c(0,max(plotdat$upper)),
      xlim=c(0, max(plotdat$obs)),
      xlab='observed', ylab='predicted')
@@ -248,42 +248,56 @@ xX <- xLatent[idX,]
 # construct predictions
 # in-sample
 linpred <- as.matrix(A.est %*% xSpace + xSett[dat$sett,] + as.matrix(cbind(1, dat[,c("cov")])) %*% xX)
-allpred_a <- cbind(dat[dat$srs==T,], linpred)
-pred_N_s <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_s <- matrix(0, nrow=nrow(dat), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_s[,i] <- rpois(n=nrow(dat), lambda=exp(linpred[,i]))
+}
+pred_N_s <- data.frame(t(apply(Nhat_s, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_s) <- c("lower","median","upper")
 
 # within sample area
 linpred <- as.matrix(A.pred_in %*% xSpace + xSett[pred_a$sett,] + as.matrix(cbind(1, pred_a[,c("cov")])) %*% xX)
-allpred_a <- rbind(allpred_a, cbind(pred_a, linpred))
-pred_N_in <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_in <- matrix(0, nrow=nrow(pred_a), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_in[,i] <- rpois(n=nrow(pred_a), lambda=exp(linpred[,i]))
+}
+pred_N_in <- data.frame(t(apply(Nhat_in, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_in) <- c("lower","median","upper")
+# total in-domain population
+allpred_a <- rbind(Nhat_s, Nhat_in)
+allpred_a <- cbind(rbind(dat, pred_a), allpred_a)
+
 # outside sample area
 linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred_b$sett,] + as.matrix(cbind(1, pred_b[,c("cov")])) %*% xX)
-  quantile(apply(linpred, 2, FUN=sum), probs=c(0.025, 0.5, 0.975))
-allpred_b <- cbind(pred_b, linpred)
-pred_N_out <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_out <- matrix(0, nrow=nrow(pred_b), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_out[,i] <- rpois(n=nrow(pred_b), lambda=exp(linpred[,i]))
+}
+pred_N_out <- data.frame(t(apply(Nhat_out, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_out) <- c("lower","median","upper")
+# total out-domain population
+allpred_b <- cbind(pred_b, Nhat_out)
 
 # plot: obs vs. pred in sample
 plotdat <- pred_N_s # lower, median, upper
 plotdat$obs <- dat$pop # observed
 plotdat$pred <- plotdat$median # predicted
 
-obspredplot(plotdat)
+obspredplot(plotdat, "In Sample")
 
 # plot: obs vs. pred in domain
 plotdat <- pred_N_in
 plotdat$obs <- pred_a$pop
 plotdat$pred <- plotdat$median
 
-obspredplot(plotdat)
+obspredplot(plotdat, "Domain A")
 
 # plot: obs vs. pred out of domain
 plotdat <- pred_N_out
 plotdat$obs <- pred_b$pop
 plotdat$pred <- plotdat$median
 
-obspredplot(plotdat)
+obspredplot(plotdat, "Domain B")
 
 ## "town" populations
 quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
@@ -376,42 +390,57 @@ xX <- xLatent[idX,]
 # construct predictions
 # in-sample
 linpred <- as.matrix(A.est %*% xSpace + xSett[dat$sett,] + as.matrix(cbind(1, dat[,c("cov")])) %*% xX)
-allpred_a <- cbind(dat, linpred)
-pred_N_s <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_s <- matrix(0, nrow=nrow(dat), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_s[,i] <- rpois(n=nrow(dat), lambda=exp(linpred[,i]))
+}
+pred_N_s <- data.frame(t(apply(Nhat_s, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_s) <- c("lower","median","upper")
 
 # within sample area
 linpred <- as.matrix(A.pred_in %*% xSpace + xSett[pred_a$sett,] + as.matrix(cbind(1, pred_a[,c("cov")])) %*% xX)
-allpred_a <- rbind(allpred_a, cbind(pred_a, linpred))
-pred_N_in <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_in <- matrix(0, nrow=nrow(pred_a), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_in[,i] <- rpois(n=nrow(pred_a), lambda=exp(linpred[,i]))
+}
+pred_N_in <- data.frame(t(apply(Nhat_in, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_in) <- c("lower","median","upper")
+# total in-domain population
+allpred_a <- rbind(Nhat_s, Nhat_in)
+allpred_a <- cbind(rbind(dat, pred_a), allpred_a)
+
 # outside sample area
 linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred_b$sett,] + as.matrix(cbind(1, pred_b[,c("cov")])) %*% xX)
-  quantile(apply(linpred, 2, FUN=sum), probs=c(0.025, 0.5, 0.975))
-allpred_b <- cbind(pred_b, linpred)
-pred_N_out <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_out <- matrix(0, nrow=nrow(pred_b), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_out[,i] <- rpois(n=nrow(pred_b), lambda=exp(linpred[,i]))
+}
+pred_N_out <- data.frame(t(apply(Nhat_out, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_out) <- c("lower","median","upper")
+# total out-domain population
+allpred_b <- cbind(pred_b, Nhat_out)
+
 
 # plot: obs vs. pred in sample
 plotdat <- pred_N_s # lower, median, upper
 plotdat$obs <- dat$pop # observed
 plotdat$pred <- plotdat$median # predicted
 
-obspredplot(plotdat)
+obspredplot(plotdat, "In Sample")
 
 # plot: obs vs. pred in domain
 plotdat <- pred_N_in
 plotdat$obs <- pred_a$pop
 plotdat$pred <- plotdat$median
 
-obspredplot(plotdat)
+obspredplot(plotdat, "Domain A")
 
 # plot: obs vs. pred out of domain
 plotdat <- pred_N_out
 plotdat$obs <- pred_b$pop
 plotdat$pred <- plotdat$median
 
-obspredplot(plotdat)
+obspredplot(plotdat, "Domain B")
 
 ## "town" populations
 quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
@@ -500,42 +529,56 @@ xX <- xLatent[idX,]
 # construct predictions
 # in-sample
 linpred <- as.matrix(A.est %*% xSpace + xSett[dat$sett,] + as.matrix(cbind(1, dat[,c("cov")])) %*% xX)
-allpred_a <- cbind(dat, linpred)
-pred_N_s <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_s <- matrix(0, nrow=nrow(dat), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_s[,i] <- rpois(n=nrow(dat), lambda=exp(linpred[,i]))
+}
+pred_N_s <- data.frame(t(apply(Nhat_s, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_s) <- c("lower","median","upper")
 
 # within sample area
 linpred <- as.matrix(A.pred_in %*% xSpace + xSett[pred_a$sett,] + as.matrix(cbind(1, pred_a[,c("cov")])) %*% xX)
-allpred_a <- rbind(allpred_a, cbind(pred_a, linpred))
-pred_N_in <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_in <- matrix(0, nrow=nrow(pred_a), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_in[,i] <- rpois(n=nrow(pred_a), lambda=exp(linpred[,i]))
+}
+pred_N_in <- data.frame(t(apply(Nhat_in, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_in) <- c("lower","median","upper")
+# total in-domain population
+allpred_a <- rbind(Nhat_s, Nhat_in)
+allpred_a <- cbind(rbind(dat, pred_a), allpred_a)
+
 # outside sample area
 linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred_b$sett,] + as.matrix(cbind(1, pred_b[,c("cov")])) %*% xX)
-  quantile(apply(linpred, 2, FUN=sum), probs=c(0.025, 0.5, 0.975))
-allpred_b <- cbind(pred_b, linpred)
-pred_N_out <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_out <- matrix(0, nrow=nrow(pred_b), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_out[,i] <- rpois(n=nrow(pred_b), lambda=exp(linpred[,i]))
+}
+pred_N_out <- data.frame(t(apply(Nhat_out, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_out) <- c("lower","median","upper")
+# total out-domain population
+allpred_b <- cbind(pred_b, Nhat_out)
 
 # plot: obs vs. pred in sample
 plotdat <- pred_N_s # lower, median, upper
 plotdat$obs <- dat$pop # observed
 plotdat$pred <- plotdat$median # predicted
 
-obspredplot(plotdat)
+obspredplot(plotdat, "In Sample")
 
 # plot: obs vs. pred in domain
 plotdat <- pred_N_in
 plotdat$obs <- pred_a$pop
 plotdat$pred <- plotdat$median
 
-obspredplot(plotdat)
+obspredplot(plotdat, "Domain A")
 
 # plot: obs vs. pred out of domain
 plotdat <- pred_N_out
 plotdat$obs <- pred_b$pop
 plotdat$pred <- plotdat$median
 
-obspredplot(plotdat)
+obspredplot(plotdat, "Domain B")
 
 ## "town" populations
 quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
@@ -625,42 +668,56 @@ xX <- xLatent[idX,]
 # construct predictions
 # in-sample
 linpred <- as.matrix(A.est %*% xSpace + xSett[dat$sett,] + as.matrix(cbind(1, dat[,c("cov")])) %*% xX)
-allpred_a <- cbind(dat, linpred)
-pred_N_s <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_s <- matrix(0, nrow=nrow(dat), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_s[,i] <- rpois(n=nrow(dat), lambda=exp(linpred[,i]))
+}
+pred_N_s <- data.frame(t(apply(Nhat_s, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_s) <- c("lower","median","upper")
 
 # within sample area
 linpred <- as.matrix(A.pred_in %*% xSpace + xSett[pred_a$sett,] + as.matrix(cbind(1, pred_a[,c("cov")])) %*% xX)
-allpred_a <- rbind(allpred_a, cbind(pred_a, linpred))
-pred_N_in <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_in <- matrix(0, nrow=nrow(pred_a), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_in[,i] <- rpois(n=nrow(pred_a), lambda=exp(linpred[,i]))
+}
+pred_N_in <- data.frame(t(apply(Nhat_in, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_in) <- c("lower","median","upper")
+# total in-domain population
+allpred_a <- rbind(Nhat_s, Nhat_in)
+allpred_a <- cbind(rbind(dat, pred_a), allpred_a)
+
 # outside sample area
 linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred_b$sett,] + as.matrix(cbind(1, pred_b[,c("cov")])) %*% xX)
-  quantile(apply(linpred, 2, FUN=sum), probs=c(0.025, 0.5, 0.975))
-allpred_b <- cbind(pred_b, linpred)
-pred_N_out <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+Nhat_out <- matrix(0, nrow=nrow(pred_b), ncol=nsamp)
+for(i in 1:nsamp){
+  Nhat_out[,i] <- rpois(n=nrow(pred_b), lambda=exp(linpred[,i]))
+}
+pred_N_out <- data.frame(t(apply(Nhat_out, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
 names(pred_N_out) <- c("lower","median","upper")
+# total out-domain population
+allpred_b <- cbind(pred_b, Nhat_out)
 
 # plot: obs vs. pred in sample
 plotdat <- pred_N_s # lower, median, upper
 plotdat$obs <- dat$pop # observed
 plotdat$pred <- plotdat$median # predicted
 
-obspredplot(plotdat)
+obspredplot(plotdat, "In Sample")
 
 # plot: obs vs. pred in domain
 plotdat <- pred_N_in
 plotdat$obs <- pred_a$pop
 plotdat$pred <- plotdat$median
 
-obspredplot(plotdat)
+obspredplot(plotdat, "Domain A")
 
 # plot: obs vs. pred out of domain
 plotdat <- pred_N_out
 plotdat$obs <- pred_b$pop
 plotdat$pred <- plotdat$median
 
-obspredplot(plotdat)
+obspredplot(plotdat, "Domain B")
 
 ## "town" populations
 quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
