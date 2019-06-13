@@ -851,8 +851,117 @@ vals <- c(pred_N_s$median, pred_N_in$median, pred_N_out$median)
 predpop[cells] <- vals
   plot(predpop)
     
-  
-  
+
+## Hierarchical - Rand Intercept Adjusted
+dat$lpop <- log(dat$pop)
+form <- lpop ~ cov + f(sett, model="iid")
+
+res <- inla(form, 
+           family="normal",
+           data=dat,
+           scale=invwts,
+           control.predictor=list(compute=T, link=1),
+           control.compute=c.c) 
+  summary(res)  
+# prediction
+# draw samples from the posterior
+ps <- inla.posterior.sample(n=nsamp, res)
+# get indices to the effects
+contents <- res$misc$configs$contents
+
+idSett <- contents$start[which(contents$tag=="sett")]-1 + (1:contents$length[which(contents$tag=="sett")])
+idX <- contents$start[which(contents$tag=="(Intercept)")]-1 + (1:2) # fixed effects, change for covariates
+# extract samples
+xLatent <- matrix(0, nrow=length(ps[[1]]$latent), ncol=nsamp)
+xHyper <- matrix(0, nrow=length(ps[[1]]$hyperpar), ncol=nsamp)
+for(i in 1:nsamp){
+  xLatent[,i] <- ps[[i]]$latent
+  xHyper[,i] <- ps[[i]]$hyperpar
+}
+xSett <- xLatent[idSett,]
+xX <- xLatent[idX,]
+# precision of lognormal
+theta <- xHyper[1,] 
+
+# construct predictions
+# in-sample
+linpred <- as.matrix(xSett[dat$sett,] + as.matrix(cbind(1, dat[,c("cov")])) %*% xX)
+Nhat_s <- matrix(0, nrow=nrow(dat), ncol=nsamp)
+for(i in 1:nsamp){
+  Dhat <- rlnorm(nrow(dat), linpred[,i], sqrt(1/theta[i]))
+  # Nhat_s[,i] <- rpois(n=nrow(dat), lambda=exp(linpred[,i]))
+  Nhat_s[,i] <- rpois(n=nrow(dat), lambda=Dhat)
+}
+pred_N_s <- data.frame(t(apply(Nhat_s, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
+names(pred_N_s) <- c("lower","median","upper")
+
+# within sample area
+linpred <- as.matrix(xSett[pred_a$sett,] + as.matrix(cbind(1, pred_a[,c("cov")])) %*% xX)
+Nhat_in <- matrix(0, nrow=nrow(pred_a), ncol=nsamp)
+for(i in 1:nsamp){
+  Dhat <- rlnorm(nrow(pred_a), linpred[,i], sqrt(1/theta[i]))
+  # Nhat_in[,i] <- rpois(n=nrow(pred_a), lambda=exp(linpred[,i]))
+  Nhat_in[,i] <- rpois(n=nrow(pred_a), lambda=Dhat)
+}
+pred_N_in <- data.frame(t(apply(Nhat_in, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
+names(pred_N_in) <- c("lower","median","upper")
+# total in-domain population
+allpred_a <- rbind(Nhat_s, Nhat_in)
+allpred_a <- cbind(rbind(dat, pred_a), allpred_a)
+
+# outside sample area
+linpred <- as.matrix(xSett[pred_b$sett,] + as.matrix(cbind(1, pred_b[,c("cov")])) %*% xX)
+Nhat_out <- matrix(0, nrow=nrow(pred_b), ncol=nsamp)
+for(i in 1:nsamp){
+  Dhat <- rlnorm(nrow(pred_b), linpred[,i], sqrt(1/theta[i]))
+  # Nhat_out[,i] <- rpois(n=nrow(pred_b), lambda=exp(linpred[,i]))
+  Nhat_out[,i] <- rpois(n=nrow(pred_b), lambda=Dhat)
+}
+pred_N_out <- data.frame(t(apply(Nhat_out, 1, FUN=function(x){ quantile(x, probs=c(0.025,0.5,0.975)) })))
+names(pred_N_out) <- c("lower","median","upper")
+# total out-domain population
+allpred_b <- cbind(pred_b, Nhat_out)
+
+
+# plot: obs vs. pred in sample
+plotdat <- pred_N_s # lower, median, upper
+plotdat$obs <- dat$pop # observed
+plotdat$pred <- plotdat$median # predicted
+
+obspredplot(plotdat, "In Sample")
+
+# plot: obs vs. pred in domain
+plotdat <- pred_N_in
+plotdat$obs <- pred_a$pop
+plotdat$pred <- plotdat$median
+
+obspredplot(plotdat, "Domain A")
+
+# plot: obs vs. pred out of domain
+plotdat <- pred_N_out
+plotdat$obs <- pred_b$pop
+plotdat$pred <- plotdat$median
+
+obspredplot(plotdat, "Domain B")
+
+## "town" populations
+quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+  sum(obs[obs$town==1,"pop"], na.rm=T)
+quantile(apply(allpred_a[allpred_a$town==4,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+  sum(obs[obs$town==4,"pop"], na.rm=T)
+
+quantile(apply(allpred_b[allpred_b$town==2,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+  sum(pred[pred$town==2,"pop"], na.rm=T)
+quantile(apply(allpred_b[allpred_b$town==3,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+  sum(pred[pred$town==3,"pop"], na.rm=T)
+
+## total population
+quantile(apply(allpred_a[,16:1015], 2, sum), probs=c(0.025, 0.5, 0.975))
+quantile(apply(allpred_b[,10:1009], 2, sum), probs=c(0.025, 0.5, 0.975))
+
+sum(pred$pop)
+sum(obs$pop)
+    
   
   
 ################################
