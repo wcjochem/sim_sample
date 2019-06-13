@@ -288,6 +288,10 @@ obspredplot(plotdat)
 quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
 quantile(apply(allpred_a[allpred_a$town==4,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
 
+quantile(apply(pred_b[pred_b$town==2,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+quantile(apply(pred_b[pred_b$town==3,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+
+
 ## Non-spatial - Random Intercept
 
 
