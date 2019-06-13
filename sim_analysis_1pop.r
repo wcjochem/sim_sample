@@ -178,6 +178,7 @@ spde <- inla.spde2.pcmatern(sim_mesh, prior.range=c(10, .9), prior.sigma=c(.5, .
 
 
 ### Simple Random Sample ###
+
 dat <- obs[obs$srs==T,]
 pred_a <- obs[obs$srs==F,]
 ## Geostats model - Fixed Intercept
@@ -231,16 +232,72 @@ xX <- xLatent[idX,]
 # construct predictions
 # in-sample
 linpred <- as.matrix(A.est %*% xSpace + xSett[dat$sett,] + as.matrix(cbind(1, dat[,c("cov")])) %*% xX)
-pred_N_s <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
+allpred_a <- cbind(dat[dat$srs==T,], linpred)
+pred_N_s <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+names(pred_N_s) <- c("lower","median","upper")
+
 # within sample area
 linpred <- as.matrix(A.pred_in %*% xSpace + xSett[pred_a$sett,] + as.matrix(cbind(1, pred_a[,c("cov")])) %*% xX)
-pred_N_in <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
+allpred_a <- rbind(allpred_a, cbind(pred_a, linpred))
+pred_N_in <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+names(pred_N_in) <- c("lower","median","upper")
 # outside sample area
 linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred$sett,] + as.matrix(cbind(1, pred[,c("cov")])) %*% xX)
-pred_N_out <- t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) }))
+  quantile(apply(linpred, 2, FUN=sum), probs=c(0.025, 0.5, 0.975))
+pred_N_out <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+names(pred_N_out) <- c("lower","median","upper")
 
-  plot()
+# plot: obs vs. pred in sample
+plotdat <- pred_N_s
+plotdat$obs <- dat$pop
+plotdat$pred <- plotdat$median
 
+plot(NA,
+     main=paste('Population Density \n(r2 =',round(cor(plotdat$pred, plotdat$obs)^2,2),')'),
+     ylim=c(0,max(plotdat$upper)),
+     xlim=c(0, max(plotdat$obs)),
+     xlab='observed', ylab='predicted')
+for(i in 1:nrow(plotdat)){
+  arrows(x0=plotdat[i,'obs'], y0=plotdat[i,'lower'], y1=plotdat[i,'upper'], length=0, col=rgb(0.5,0.5,0.5,0.5))
+}
+points(plotdat$obs, plotdat$pred)
+abline(0,1,col='red')
+
+# plot: obs vs. pred in domain
+plotdat <- pred_N_in
+plotdat$obs <- pred_a$pop
+plotdat$pred <- plotdat$median
+
+plot(NA,
+     main=paste('Population Density \n(r2 =',round(cor(plotdat$pred, plotdat$obs)^2,2),')'),
+     ylim=c(0,max(plotdat$upper)),
+     xlim=c(0, max(plotdat$obs)),
+     xlab='observed', ylab='predicted')
+for(i in 1:nrow(plotdat)){
+  arrows(x0=plotdat[i,'obs'], y0=plotdat[i,'lower'], y1=plotdat[i,'upper'], length=0, col=rgb(0.5,0.5,0.5,0.5))
+}
+points(plotdat$obs, plotdat$pred)
+abline(0,1,col='red')
+
+# plot: obs vs. pred out of domain
+plotdat <- pred_N_out
+plotdat$obs <- pred$pop
+plotdat$pred <- plotdat$median
+
+plot(NA,
+     main=paste('Population Density \n(r2 =',round(cor(plotdat$pred, plotdat$obs)^2,2),')'),
+     ylim=c(0,max(plotdat$upper)),
+     xlim=c(0, max(plotdat$obs)),
+     xlab='observed', ylab='predicted')
+for(i in 1:nrow(plotdat)){
+  arrows(x0=plotdat[i,'obs'], y0=plotdat[i,'lower'], y1=plotdat[i,'upper'], length=0, col=rgb(0.5,0.5,0.5,0.5))
+}
+points(plotdat$obs, plotdat$pred)
+abline(0,1,col='red')
+
+## "town" populations
+quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+quantile(apply(allpred_a[allpred_a$town==4,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
 
 ## Non-spatial - Random Intercept
 
