@@ -165,15 +165,15 @@ bs <- lcube(prob=wts,
            )
 
 # set samples
-obs[srs, "srs"] <- TRUE
+obs[srs, "srs"] <- TRUE # simple random
 obs[is.na(obs$srs),"srs"] <- FALSE
-obs[pwgt, "pwt"] <- TRUE
+obs[pwgt, "pwt"] <- TRUE # population weighted
 obs[is.na(obs$pwt), "pwt"] <- FALSE
-obs[obs$rid %in% sts, "sts"] <- TRUE
+obs[obs$rid %in% sts, "sts"] <- TRUE # stratified random
 obs[is.na(obs$sts), "sts"] <- FALSE
-obs[obs$rid %in% sys, "sys"] <- TRUE
+obs[obs$rid %in% sys, "sys"] <- TRUE # systematic random
 obs[is.na(obs$sys), "sys"] <- FALSE
-obs[bs, "bal"] <- TRUE
+obs[bs, "bal"] <- TRUE # balanced spatial
 obs[is.na(obs$bal), "bal"] <- FALSE
 
 
@@ -190,13 +190,13 @@ sim_mesh <- inla.mesh.2d(loc=fake.locations, max.edge=c(1, 4))
 spde <- inla.spde2.pcmatern(sim_mesh, prior.range=c(10, .9), prior.sigma=c(.5, .5))
 
 
-
+#############################
 ### Simple Random Sample ###
 
 dat <- obs[obs$srs==T,]
 pred_a <- obs[obs$srs==F,]
 pred_b <- pred # clean copy
-## Geostats model - Fixed Intercept
+## Geostats model - Rand Intercept
 # set up model
 A.est <- inla.spde.make.A(mesh=sim_mesh,
                           loc=data.matrix(dat[,c("x","y")]))
@@ -217,13 +217,14 @@ stack.est <- inla.stack(data=list(pop=dat$pop),
                                       list(dat[,c("cov","sett")]) ),
                         tag='est')
 # fit model
-form <- pop ~ -1 + Intercept + cov + f(sett, model="iid", values=1:3) + f(field, model=spde)
+form <- pop ~ -1 + Intercept + cov + f(sett, model="iid") + f(field, model=spde)
 
 res <- inla(form, 
            family="poisson",
            data=inla.stack.data(stack.est),
            control.predictor=list(A=inla.stack.A(stack.est), compute=T, link=1),
            control.compute=c.c) 
+  summary(res)
 # prediction
 # draw samples from the posterior
 ps <- inla.posterior.sample(n=nsamp, res)
@@ -259,7 +260,7 @@ names(pred_N_in) <- c("lower","median","upper")
 # outside sample area
 linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred_b$sett,] + as.matrix(cbind(1, pred_b[,c("cov")])) %*% xX)
   quantile(apply(linpred, 2, FUN=sum), probs=c(0.025, 0.5, 0.975))
-pred_b <- cbind(pred_b, linpred)
+allpred_b <- cbind(allpred_b, linpred)
 pred_N_out <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
 names(pred_N_out) <- c("lower","median","upper")
 
@@ -288,19 +289,116 @@ obspredplot(plotdat)
 quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
 quantile(apply(allpred_a[allpred_a$town==4,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
 
-quantile(apply(pred_b[pred_b$town==2,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
-quantile(apply(pred_b[pred_b$town==3,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+quantile(apply(allpred_b[allpred_b$town==2,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+quantile(apply(allpred_b[allpred_b$town==3,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
 
 
 ## Non-spatial - Random Intercept
 
 
 
-## Geostats model - Random Intercept
+#############################
+### Stratified Random Sample ###
+
+dat <- obs[obs$sts==T,]
+pred_a <- obs[obs$srs==F,]
+pred_b <- pred # clean copy
+
+## Geostats model - Rand Intercept
+# set up model
+A.est <- inla.spde.make.A(mesh=sim_mesh,
+                          loc=data.matrix(dat[,c("x","y")]))
+
+A.pred_in <- inla.spde.make.A(mesh=sim_mesh,
+                              loc=data.matrix(pred_a[,c("x","y")]))
+
+A.pred_out <- inla.spde.make.A(mesh=sim_mesh,
+                               loc=data.matrix(pred_b[,c("x","y")]))
+# index to the mesh
+mesh.index0 <- inla.spde.make.index(name="field", n.spde=spde$n.spde)
 
 
+# data stack for model
+stack.est <- inla.stack(data=list(pop=dat$pop),
+                        A=list(A.est, 1),
+                        effects=list( c(mesh.index0, list(Intercept=1)),
+                                      list(dat[,c("cov","sett")]) ),
+                        tag='est')
+# fit model
+form <- pop ~ -1 + Intercept + cov + f(sett, model="iid") + f(field, model=spde)
 
+res <- inla(form, 
+           family="poisson",
+           data=inla.stack.data(stack.est),
+           control.predictor=list(A=inla.stack.A(stack.est), compute=T, link=1),
+           control.compute=c.c) 
+  summary(res)
+# prediction
+# draw samples from the posterior
+ps <- inla.posterior.sample(n=nsamp, res)
+# get indices to the effects
+contents <- res$misc$configs$contents
 
+idSpace <- contents$start[which(contents$tag=="field")]-1 + (1:contents$length[which(contents$tag=="field")])
+idSett <- contents$start[which(contents$tag=="sett")]-1 + (1:contents$length[which(contents$tag=="sett")])
+idX <- contents$start[which(contents$tag=="Intercept")]-1 + (1:2) # fixed effects, change for covariates
+# extract samples
+xLatent <- matrix(0, nrow=length(ps[[1]]$latent), ncol=nsamp)
+xHyper <- matrix(0, nrow=length(ps[[1]]$hyperpar), ncol=nsamp)
+for(i in 1:nsamp){
+  xLatent[,i] <- ps[[i]]$latent
+  xHyper[,i] <- ps[[i]]$hyperpar
+}
+xSpace <- xLatent[idSpace,]
+xSett <- xLatent[idSett,]
+xX <- xLatent[idX,]
+
+# construct predictions
+# in-sample
+linpred <- as.matrix(A.est %*% xSpace + xSett[dat$sett,] + as.matrix(cbind(1, dat[,c("cov")])) %*% xX)
+allpred_a <- cbind(dat[dat$srs==T,], linpred)
+pred_N_s <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+names(pred_N_s) <- c("lower","median","upper")
+
+# within sample area
+linpred <- as.matrix(A.pred_in %*% xSpace + xSett[pred_a$sett,] + as.matrix(cbind(1, pred_a[,c("cov")])) %*% xX)
+allpred_a <- rbind(allpred_a, cbind(pred_a, linpred))
+pred_N_in <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+names(pred_N_in) <- c("lower","median","upper")
+# outside sample area
+linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred_b$sett,] + as.matrix(cbind(1, pred_b[,c("cov")])) %*% xX)
+  quantile(apply(linpred, 2, FUN=sum), probs=c(0.025, 0.5, 0.975))
+allpred_b <- cbind(allpred_b, linpred)
+pred_N_out <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
+names(pred_N_out) <- c("lower","median","upper")
+
+# plot: obs vs. pred in sample
+plotdat <- pred_N_s # lower, median, upper
+plotdat$obs <- dat$pop # observed
+plotdat$pred <- plotdat$median # predicted
+
+obspredplot(plotdat)
+
+# plot: obs vs. pred in domain
+plotdat <- pred_N_in
+plotdat$obs <- pred_a$pop
+plotdat$pred <- plotdat$median
+
+obspredplot(plotdat)
+
+# plot: obs vs. pred out of domain
+plotdat <- pred_N_out
+plotdat$obs <- pred_b$pop
+plotdat$pred <- plotdat$median
+
+obspredplot(plotdat)
+
+## "town" populations
+quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+quantile(apply(allpred_a[allpred_a$town==4,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+
+quantile(apply(allpred_b[allpred_b$town==2,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+quantile(apply(allpred_b[allpred_b$town==3,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
 
 
 
