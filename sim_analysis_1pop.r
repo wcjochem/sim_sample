@@ -16,6 +16,20 @@ library(splitstackshape)
 rm(list=ls())
 set.seed(1126)
 
+# helper functions
+obspredplot <- function(plotdat){ # needs lower, median, upper, obs, pred fields
+  plot(NA,
+     main=paste('Population Density \n(r2 =',round(cor(plotdat$pred, plotdat$obs)^2,2),')'),
+     ylim=c(0,max(plotdat$upper)),
+     xlim=c(0, max(plotdat$obs)),
+     xlab='observed', ylab='predicted')
+  for(i in 1:nrow(plotdat)){
+    arrows(x0=plotdat[i,'obs'], y0=plotdat[i,'lower'], y1=plotdat[i,'upper'], length=0, col=rgb(0.5,0.5,0.5,0.5))
+  }
+  points(plotdat$obs, plotdat$pred)
+  abline(0,1,col='red')
+}
+
 # set-up
 # construct study area and strata
 r_width <- 20
@@ -248,52 +262,25 @@ pred_N_out <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=n
 names(pred_N_out) <- c("lower","median","upper")
 
 # plot: obs vs. pred in sample
-plotdat <- pred_N_s
-plotdat$obs <- dat$pop
-plotdat$pred <- plotdat$median
+plotdat <- pred_N_s # lower, median, upper
+plotdat$obs <- dat$pop # observed
+plotdat$pred <- plotdat$median # predicted
 
-plot(NA,
-     main=paste('Population Density \n(r2 =',round(cor(plotdat$pred, plotdat$obs)^2,2),')'),
-     ylim=c(0,max(plotdat$upper)),
-     xlim=c(0, max(plotdat$obs)),
-     xlab='observed', ylab='predicted')
-for(i in 1:nrow(plotdat)){
-  arrows(x0=plotdat[i,'obs'], y0=plotdat[i,'lower'], y1=plotdat[i,'upper'], length=0, col=rgb(0.5,0.5,0.5,0.5))
-}
-points(plotdat$obs, plotdat$pred)
-abline(0,1,col='red')
+obspredplot(plotdat)
 
 # plot: obs vs. pred in domain
 plotdat <- pred_N_in
 plotdat$obs <- pred_a$pop
 plotdat$pred <- plotdat$median
 
-plot(NA,
-     main=paste('Population Density \n(r2 =',round(cor(plotdat$pred, plotdat$obs)^2,2),')'),
-     ylim=c(0,max(plotdat$upper)),
-     xlim=c(0, max(plotdat$obs)),
-     xlab='observed', ylab='predicted')
-for(i in 1:nrow(plotdat)){
-  arrows(x0=plotdat[i,'obs'], y0=plotdat[i,'lower'], y1=plotdat[i,'upper'], length=0, col=rgb(0.5,0.5,0.5,0.5))
-}
-points(plotdat$obs, plotdat$pred)
-abline(0,1,col='red')
+obspredplot(plotdat)
 
 # plot: obs vs. pred out of domain
 plotdat <- pred_N_out
 plotdat$obs <- pred$pop
 plotdat$pred <- plotdat$median
 
-plot(NA,
-     main=paste('Population Density \n(r2 =',round(cor(plotdat$pred, plotdat$obs)^2,2),')'),
-     ylim=c(0,max(plotdat$upper)),
-     xlim=c(0, max(plotdat$obs)),
-     xlab='observed', ylab='predicted')
-for(i in 1:nrow(plotdat)){
-  arrows(x0=plotdat[i,'obs'], y0=plotdat[i,'lower'], y1=plotdat[i,'upper'], length=0, col=rgb(0.5,0.5,0.5,0.5))
-}
-points(plotdat$obs, plotdat$pred)
-abline(0,1,col='red')
+obspredplot(plotdat)
 
 ## "town" populations
 quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
