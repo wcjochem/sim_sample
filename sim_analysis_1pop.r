@@ -105,7 +105,7 @@ domain[domain$cnum %in% cellsFromExtent(truepop, loc1x),"town"] <- 1
 domain[domain$cnum %in% cellsFromExtent(truepop, loc2x),"town"] <- 2
 domain[domain$cnum %in% cellsFromExtent(truepop, loc3x),"town"] <- 3
 domain[domain$cnum %in% cellsFromExtent(truepop, loc4x),"town"] <- 4
-# exclude areas with no population
+domain[is.na(domain$town),"town"] <- 0
 domain <- domain[domain$pop > 0,]
   by(domain$pop, domain$town, sum)
 
