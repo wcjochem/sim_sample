@@ -301,7 +301,7 @@ quantile(apply(allpred_b[allpred_b$town==3,10:1009], 2, function(x) sum(x, na.rm
 ### Stratified Random Sample ###
 
 dat <- obs[obs$sts==T,]
-pred_a <- obs[obs$srs==F,]
+pred_a <- obs[obs$sts==F,]
 pred_b <- pred # clean copy
 
 ## Geostats model - Rand Intercept
@@ -356,7 +356,7 @@ xX <- xLatent[idX,]
 # construct predictions
 # in-sample
 linpred <- as.matrix(A.est %*% xSpace + xSett[dat$sett,] + as.matrix(cbind(1, dat[,c("cov")])) %*% xX)
-allpred_a <- cbind(dat[dat$srs==T,], linpred)
+allpred_a <- cbind(dat[dat$sts==T,], linpred)
 pred_N_s <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
 names(pred_N_s) <- c("lower","median","upper")
 
@@ -368,7 +368,7 @@ names(pred_N_in) <- c("lower","median","upper")
 # outside sample area
 linpred <- as.matrix(A.pred_out %*% xSpace + xSett[pred_b$sett,] + as.matrix(cbind(1, pred_b[,c("cov")])) %*% xX)
   quantile(apply(linpred, 2, FUN=sum), probs=c(0.025, 0.5, 0.975))
-allpred_b <- cbind(allpred_b, linpred)
+allpred_b <- cbind(pred_b, linpred)
 pred_N_out <- data.frame(t(apply(linpred, 1, FUN=function(x){ quantile(rpois(n=nsamp, lambda=exp(x)), probs=c(0.025,0.5,0.975)) })))
 names(pred_N_out) <- c("lower","median","upper")
 
@@ -395,12 +395,21 @@ obspredplot(plotdat)
 
 ## "town" populations
 quantile(apply(allpred_a[allpred_a$town==1,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+  sum(obs[obs$town==1,"pop"], na.rm=T)
 quantile(apply(allpred_a[allpred_a$town==4,16:1015], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+  sum(obs[obs$town==4,"pop"], na.rm=T)
 
 quantile(apply(allpred_b[allpred_b$town==2,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+  sum(pred[pred$town==2,"pop"], na.rm=T)
 quantile(apply(allpred_b[allpred_b$town==3,10:1009], 2, function(x) sum(x, na.rm=T)), probs=c(0.025, 0.5, 0.975))
+  sum(pred[pred$town==3,"pop"], na.rm=T)
 
+## total population
+quantile(apply(allpred_a[,16:1015], 2, sum), probs=c(0.025, 0.5, 0.975))
+quantile(apply(allpred_b[,10:1009], 2, sum), probs=c(0.025, 0.5, 0.975))
 
+sum(pred$pop)
+sum(obs$pop)
 
 
 
